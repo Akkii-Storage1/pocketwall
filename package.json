@@ -1,0 +1,84 @@
+{
+  "name": "pocketwall",
+  "version": "1.2.3",
+  "description": "Personal Finance Desktop App",
+  "main": "./out/main/index.js",
+  "author": "Ankit Dixit",
+  "copyright": "Copyright © 2024 Ankit Dixit. All Rights Reserved.",
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
+    "start": "electron-vite preview",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "postinstall": "electron-builder install-app-deps",
+    "build:win": "npm run build && electron-builder --win --config",
+    "build:web": "vite build -c vite.config.web.js",
+    "preview:web": "vite preview -c vite.config.web.js"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.0",
+    "@electron-toolkit/utils": "^3.0.0",
+    "@nivo/bar": "^0.99.0",
+    "@nivo/calendar": "^0.99.0",
+    "@nivo/core": "^0.99.0",
+    "@nivo/line": "^0.99.0",
+    "@nivo/pie": "^0.99.0",
+    "@nivo/radar": "^0.99.0",
+    "@nivo/sankey": "^0.99.0",
+    "@nivo/scatterplot": "^0.99.0",
+    "@nivo/stream": "^0.99.0",
+    "@nivo/treemap": "^0.99.0",
+    "clsx": "^2.1.0",
+    "electron-updater": "^6.1.7",
+    "firebase": "^12.6.0",
+    "framer-motion": "^11.0.8",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
+    "lightweight-charts": "^5.0.9",
+    "lucide-react": "^0.344.0",
+    "react-router-dom": "^7.9.6",
+    "recharts": "^3.4.1",
+    "tailwind-merge": "^2.2.1",
+    "xlsx": "^0.18.5",
+    "yahoo-finance2": "^3.10.2"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config": "^1.0.2",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1",
+    "electron-vite": "^2.0.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "postcss": "^8.4.35",
+    "prettier": "^3.2.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.0.12"
+  },
+  "build": {
+    "appId": "com.pocketwall.app",
+    "productName": "PocketWall",
+    "copyright": "Copyright © 2024 Ankit Dixit",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

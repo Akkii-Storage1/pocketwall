@@ -1,0 +1,549 @@
+import React, { useState, useEffect, useRef } from 'react';
+import Dashboard from './pages/Dashboard';
+import Transactions from './pages/Transactions';
+import Budget from './pages/Budget';
+import Investments from './pages/Investments';
+import Recurring from './pages/Recurring';
+import Goals from './pages/Goals';
+import Payees from './pages/Payees';
+import Accounts from './pages/Accounts';
+import Reconcile from './pages/Reconcile';
+import Reports from './pages/Reports';
+import Portfolio from './pages/Portfolio';
+import Insights from './pages/Insights';
+import DataGallery from './pages/DataGallery';
+import Notifications from './pages/Notifications';
+import Achievements from './pages/Achievements';
+import Settings from './pages/Settings';
+import TaxReport from './pages/TaxReport';
+import InvestmentReport from './pages/InvestmentReport';
+import SharedExpenses from './pages/SharedExpenses';
+import BottomNav from './components/BottomNav';
+import DataAdapter from './utils/dataAdapter';
+import { detectRecurringBills } from './utils/insights';
+import NotificationManager from './utils/NotificationManager';
+import PinLock from './components/PinLock';
+import { useFeature } from './context/FeatureContext';
+import SubscriptionModal from './components/SubscriptionModal';
+import AdminDashboard from './pages/AdminDashboard';
+import MutualFunds from './pages/MutualFunds';
+import Crypto from './pages/Crypto';
+import Calculators from './pages/Calculators';
+
+function App() {
+    const { tier, isTrial, trialInfo, config, featureFlags } = useFeature();
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [theme, setTheme] = useState(() => {
+        return localStorage.getItem('theme') || 'light';
+    });
+    const [isLocked, setIsLocked] = useState(() => !!localStorage.getItem('pocketwall_pin'));
+    const [isPrivacyMode, setIsPrivacyMode] = useState(() => localStorage.getItem('privacy_mode') === 'true');
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem('privacy_mode', isPrivacyMode);
+    }, [isPrivacyMode]);
+
+    // Menu State
+    const [activeMenu, setActiveMenu] = useState(null);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        localStorage.setItem('theme', theme);
+    }, [theme]);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setActiveMenu(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Notifications
+    useEffect(() => {
+        NotificationManager.runChecks();
+        const interval = setInterval(() => {
+            NotificationManager.runChecks();
+        }, 5 * 60 * 1000); // Check every 5 minutes
+        return () => clearInterval(interval);
+    }, []);
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case '1': setActiveTab('dashboard'); break;
+                    case '2': setActiveTab('transactions'); break;
+                    case '3': setActiveTab('budget'); break;
+                    case '4': setActiveTab('recurring'); break;
+                    case '5': setActiveTab('investments'); break;
+                    case '6': setActiveTab('settings'); break;
+                    case '7': setActiveTab('goals'); break;
+                    case '8': setActiveTab('reports'); break;
+                    case '9': setActiveTab('portfolio'); break;
+                    // Mnemonic Shortcuts
+                    case 'd': case 'D': setActiveTab('dashboard'); break;
+                    case 't': case 'T': setActiveTab('transactions'); break;
+                    case 'r': case 'R': setActiveTab('recurring'); break;
+                    case 'i': case 'I': setActiveTab('investments'); break;
+                    case 'g': case 'G': setActiveTab('goals'); break;
+                    case 'e': case 'E': setActiveTab('reports'); break;
+                    case 'p': case 'P': setActiveTab('portfolio'); break;
+                    case 'a': case 'A': setActiveTab('achievements'); break;
+                    case 's': case 'S':
+                        e.preventDefault();
+                        setActiveTab('settings');
+                        break;
+                    case 'n':
+                    case 'N':
+                        e.preventDefault();
+                        setActiveTab('transactions');
+                        break;
+                    case '=':
+                    case '+':
+                        if (e.ctrlKey) {
+                            e.preventDefault();
+                            const currentZoom = parseFloat(document.body.style.zoom || '100') / 100;
+                            document.body.style.zoom = `${Math.min(currentZoom + 0.1, 2) * 100}%`;
+                        }
+                        break;
+                    case '-':
+                        if (e.ctrlKey) {
+                            e.preventDefault();
+                            const currentZoom = parseFloat(document.body.style.zoom || '100') / 100;
+                            document.body.style.zoom = `${Math.max(currentZoom - 0.1, 0.5) * 100}%`;
+                        }
+                        break;
+                    case '0':
+                        if (e.ctrlKey) {
+                            e.preventDefault();
+                            document.body.style.zoom = '100%';
+                        }
+                        break;
+                    default: break;
+                }
+            }
+            // Admin Shortcut (Ctrl + Shift + A)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+                e.preventDefault();
+                setActiveTab('admin');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    const isDark = theme === 'dark';
+
+    const renderPage = () => {
+        switch (activeTab) {
+            case 'dashboard': return <Dashboard isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'transactions': return <Transactions isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'budget': return <Budget isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'recurring': return <Recurring isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'investments': return <Investments isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'mutualfunds': return <MutualFunds isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'crypto': return <Crypto isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'settings': return <Settings isDark={isDark} theme={theme} setTheme={setTheme} isPrivacyMode={isPrivacyMode} />;
+            case 'shared': return <SharedExpenses isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'admin': return <AdminDashboard isDark={isDark} />;
+            case 'goals': return <Goals isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'reports': return <Reports isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'portfolio': return <Portfolio isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'gallery': return <DataGallery isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'insights': return <Insights isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'achievements': return <Achievements isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'notifications': return <Notifications isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'calculators': return <Calculators isDark={isDark} />;
+            case 'payees': return <Payees isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'accounts': return <Accounts isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            case 'reconcile': return <Reconcile isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+            default: return <Dashboard isDark={isDark} isPrivacyMode={isPrivacyMode} />;
+        }
+    };
+
+    const handleMenuClick = (menuName) => {
+        setActiveMenu(activeMenu === menuName ? null : menuName);
+    };
+
+    const handleMenuAction = (action) => {
+        setActiveMenu(null);
+        switch (action) {
+            case 'exit':
+                if (confirm('Exit PocketWall?')) window.close();
+                break;
+            case 'toggleTheme':
+                setTheme(prev => prev === 'light' ? 'dark' : 'light');
+                break;
+            case 'zoomIn':
+                document.body.style.zoom = (parseFloat(document.body.style.zoom || 1) + 0.1);
+                break;
+            case 'zoomOut':
+                document.body.style.zoom = (parseFloat(document.body.style.zoom || 1) - 0.1);
+                break;
+            case 'resetZoom':
+                document.body.style.zoom = 1;
+                break;
+            case 'shortcuts':
+                alert('Keyboard Shortcuts:\\n\\nNavigation:\\nCtrl+1 / Ctrl+D : Dashboard\\nCtrl+2 / Ctrl+T : Transactions\\nCtrl+3 : Budget\\nCtrl+4 / Ctrl+R : Recurring\\nCtrl+5 / Ctrl+I : Investments\\nCtrl+6 / Ctrl+S : Settings\\nCtrl+7 / Ctrl+G : Goals\\nCtrl+8 / Ctrl+E : Reports\\n\\nActions:\\nCtrl+N : New Transaction');
+                break;
+            case 'about':
+                alert('PocketWall v1.1 (Pro)\\n\\nThe Ultimate Personal Finance Tool.\\n\\n(c) 2024 PocketWall Inc.');
+                break;
+            case 'export':
+                if (activeTab !== 'transactions') {
+                    setActiveTab('transactions');
+                    setTimeout(() => alert('Please use the "Export CSV" button in the Transactions tab.'), 100);
+                } else {
+                    alert('Please use the "Export CSV" button in the toolbar.');
+                }
+                break;
+            default: break;
+        }
+    };
+
+    const handleNav = (tab) => {
+        setActiveTab(tab);
+        setActiveMenu(null);
+    };
+
+    const bgColor = isDark ? '#2d2d30' : '#f0f0f0';
+    const menuBg = isDark ? '#3e3e42' : '#f0f0f0';
+    const textColor = isDark ? '#ffffff' : '#000000';
+    const dropdownBg = isDark ? '#1e1e1e' : '#ffffff';
+    const dropdownBorder = isDark ? '#555' : '#a0a0a0';
+
+    const MenuButton = ({ label, name }) => (
+        <div className="relative">
+            <button
+                onClick={() => handleMenuClick(name)}
+                className={`px-3 py-1 hover:bg-opacity-10 hover:bg-blue-500 ${activeMenu === name ? 'bg-blue-200 text-black' : ''}`}
+                style={{ color: activeMenu === name ? '#000' : textColor }}
+            >
+                {label}
+            </button>
+            {activeMenu === name && (
+                <div
+                    className="absolute left-0 top-full shadow-xl border min-w-[150px] z-50 flex flex-col py-1"
+                    style={{ backgroundColor: dropdownBg, borderColor: dropdownBorder }}
+                >
+                    <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs opacity-50 cursor-not-allowed" style={{ color: textColor }}>Copy</button>
+                    <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs opacity-50 cursor-not-allowed" style={{ color: textColor }}>Paste</button>
+                </>
+            )}
+            {name === 'view' && (
+                <>
+                    <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }} onClick={() => handleMenuAction('toggleTheme')}>Toggle Theme</button>
+                    <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }} onClick={() => setIsPrivacyMode(!isPrivacyMode)}>
+                        {isPrivacyMode ? 'Disable Screen Privacy' : 'Enable Screen Privacy'}
+                    </button>
+                    <div className="border-b my-1" style={{ borderColor: dropdownBorder }}></div>
+                    <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }} onClick={() => handleMenuAction('zoomIn')}>Zoom In</button>
+                    <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }} onClick={() => handleMenuAction('zoomOut')}>Zoom Out</button>
+                    <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }} onClick={() => handleMenuAction('resetZoom')}>Reset Zoom</button>
+                </>
+            )}
+            <>
+                <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }} onClick={() => handleMenuAction('shortcuts')}>Keyboard Shortcuts</button>
+                <div className="border-b my-1" style={{ borderColor: dropdownBorder }}></div>
+                <button className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }} onClick={() => handleMenuAction('about')}>About PocketWall</button>
+            </>
+                    )}
+            {name === 'investments' && (
+                <>
+                    <button onClick={() => handleNav('investments')} className="px-4 py-2 text-left hover:bg-opacity-10 hover:bg-blue-500" style={{ color: textColor }}>Stocks & ETFs</button>
+                    <button onClick={() => handleNav('mutualfunds')} className="px-4 py-2 text-left hover:bg-opacity-10 hover:bg-blue-500" style={{ color: textColor }}>Mutual Funds</button>
+                    <button onClick={() => handleNav('crypto')} className="px-4 py-2 text-left hover:bg-opacity-10 hover:bg-blue-500" style={{ color: textColor }}>Crypto</button>
+                    <button onClick={() => handleNav('portfolio')} className="px-4 py-2 text-left hover:bg-opacity-10 hover:bg-blue-500" style={{ color: textColor }}>My Portfolio</button>
+                </>
+            )}
+            {name === 'mutualfunds' && (
+                <>
+                    <button onClick={() => handleNav('mutualfunds')} className="px-4 py-2 text-left hover:bg-opacity-10 hover:bg-blue-500" style={{ color: textColor }}>Search Funds</button>
+                    <button onClick={() => handleNav('mutualfunds')} className="px-4 py-2 text-left hover:bg-opacity-10 hover:bg-blue-500" style={{ color: textColor }}>SIP Calculator</button>
+                </>
+            )}
+        </div>
+    )
+}
+        </div >
+    );
+
+return (
+    <div className={`flex flex-col h-screen ${isPrivacyMode ? 'privacy-mode' : ''}`} style={{ fontFamily: 'Segoe UI, Tahoma, Arial, sans-serif', backgroundColor: bgColor }}>
+        {isLocked && (
+            <PinLock
+                isDark={isDark}
+                mode="unlock"
+                onUnlock={(pin) => {
+                    if (pin === localStorage.getItem('pocketwall_pin')) {
+                        setIsLocked(false);
+                    } else {
+                        // Error handled in PinLock
+                    }
+                }}
+            />
+        )}
+        {/* Menu Bar */}
+        <div
+            ref={menuRef}
+            className="flex items-center border-b px-1 select-none"
+            style={{
+                backgroundColor: menuBg,
+                borderColor: isDark ? '#1e1e1e' : '#d4d4d4',
+                height: '24px',
+                fontSize: '11px'
+            }}
+        >
+            <MenuButton label="File" name="file" />
+            <MenuButton label="Edit" name="edit" />
+            <MenuButton label="View" name="view" />
+            <MenuButton label="Tools" name="tools" />
+            <MenuButton label="Help" name="help" />
+            <MenuButton label="Investments" name="investments" />
+            {isTrial && (
+                <span className="ml-auto mr-4 text-orange-500 font-bold animate-pulse text-[10px]">
+                    ⏳ Trial: {Math.ceil(trialInfo.remainingHours)}h left
+                </span>
+            )}
+            {!isTrial && <div className="ml-auto" />} {/* Spacer when no trial */}
+            <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="mr-4 px-2 py-0.5 text-[10px] bg-gradient-to-r from-yellow-400 to-yellow-600 text-white font-bold rounded shadow hover:shadow-md transition-all"
+            >
+                ⭐ Upgrade
+            </button>
+            <span className="mr-2 text-[10px] opacity-50" style={{ color: textColor }}>Ctrl+1..8 to Navigate</span>
+        </div>
+
+        {/* Toolbar (Desktop Only) */}
+        <div
+            className="hidden md:flex items-center gap-1 px-2 py-1 border-b overflow-x-auto"
+            style={{
+                backgroundColor: menuBg,
+                borderColor: isDark ? '#1e1e1e' : '#d4d4d4'
+            }}
+        >
+            <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'dashboard' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'dashboard' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'dashboard' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                Dashboard
+            </button>
+            <button
+                onClick={() => setActiveTab('transactions')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'transactions' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'transactions' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'transactions' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                Transactions
+            </button>
+            <button
+                onClick={() => setActiveTab('budget')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'budget' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'budget' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'budget' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                Budget
+            </button>
+            <button
+                onClick={() => setActiveTab('recurring')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'recurring' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'recurring' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'recurring' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                Bills & Recurring
+            </button>
+            <button
+                onClick={() => setActiveTab('investments')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'investments' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'investments' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'investments' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                Investments
+            </button>
+            {featureFlags['mutual_funds'] && (
+                <button
+                    onClick={() => setActiveTab('mutualfunds')}
+                    className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'mutualfunds' ? 'font-bold' : ''}`}
+                    style={{
+                        backgroundColor: activeTab === 'mutualfunds' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                        color: activeTab === 'mutualfunds' ? (isDark ? '#fff' : '#000') : textColor,
+                        borderColor: isDark ? '#555' : '#adadad'
+                    }}
+                >
+                    Mutual Funds
+                </button>
+            )}
+            {featureFlags['crypto_integration'] && (
+                <button
+                    onClick={() => setActiveTab('crypto')}
+                    className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'crypto' ? 'font-bold' : ''}`}
+                    style={{
+                        backgroundColor: activeTab === 'crypto' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                        color: activeTab === 'crypto' ? (isDark ? '#fff' : '#000') : textColor,
+                        borderColor: isDark ? '#555' : '#adadad'
+                    }}
+                >
+                    Crypto
+                </button>
+            )}
+            <button
+                onClick={() => setActiveTab('goals')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'goals' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'goals' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'goals' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                Goals
+            </button>
+            <button
+                onClick={() => setActiveTab('shared')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'shared' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'shared' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'shared' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                👥 Shared
+            </button>
+            <button
+                onClick={() => setActiveTab('reports')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'reports' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'reports' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'reports' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                Reports
+            </button>
+            <button
+                onClick={() => setActiveTab('portfolio')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'portfolio' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'portfolio' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'portfolio' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                💰 Portfolio
+            </button>
+            <button
+                onClick={() => setActiveTab('gallery')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'gallery' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'gallery' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'gallery' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                📊 Gallery
+            </button>
+            <button
+                onClick={() => setActiveTab('insights')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'insights' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'insights' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'insights' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                🤖 Insights
+            </button>
+            <button
+                onClick={() => setActiveTab('achievements')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'achievements' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'achievements' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'achievements' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                🏆 Achievements
+            </button>
+            <button
+                onClick={() => setActiveTab('notifications')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'notifications' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'notifications' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'notifications' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                🔔 Alerts
+            </button>
+            <button
+                onClick={() => setActiveTab('settings')}
+                className={`px-3 py-1 text-xs border hover:brightness-95 ${activeTab === 'settings' ? 'font-bold' : ''}`}
+                style={{
+                    backgroundColor: activeTab === 'settings' ? (isDark ? '#007acc' : '#cce8ff') : (isDark ? '#3e3e42' : '#e0e0e0'),
+                    color: activeTab === 'settings' ? (isDark ? '#fff' : '#000') : textColor,
+                    borderColor: isDark ? '#555' : '#adadad'
+                }}
+            >
+                ⚙️ Settings
+            </button>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto pb-[60px] md:pb-0">
+            {renderPage()}
+        </div>
+
+        {/* Bottom Nav (Mobile Only) */}
+        <div className="md:hidden">
+            <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
+        </div>
+
+        {/* Status Bar */}
+        <div
+            className="hidden md:flex gap-4 px-2 py-1 border-t text-[10px] opacity-70 items-center justify-between"
+            style={{
+                backgroundColor: menuBg,
+                borderColor: isDark ? '#1e1e1e' : '#d4d4d4',
+                color: textColor
+            }}
+        >
+            <div className="flex gap-4">
+                <span>Ready</span>
+                <span>PocketWall v1.1 ({config?.label || 'Loading...'})</span>
+            </div>
+            <div>
+                {isPrivacyMode && <span className="text-red-500 font-bold mr-2">PRIVACY MODE ON</span>}
+                <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>
+            </div>
+        </div>
+
+        {showUpgradeModal && <SubscriptionModal onClose={() => setShowUpgradeModal(false)} />}
+    </div>
+);
+}
+
+export default App;

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+electron_dist/
+dist_web/
+
+# Cache folders
+cache/
+eb-cache/
+.cache/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keys (sensitive)
+keys.txt
+keys_utf8.txt
+
+# Backups
+src_backup/
+src_backup_before_build/
+
+# Temporary files
+*.tmp
+*.temp

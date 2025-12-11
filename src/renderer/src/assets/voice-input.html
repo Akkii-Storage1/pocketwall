@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Voice Input</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .mic-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: #3b82f6;
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mic-btn:hover {
+            background: #2563eb;
+            transform: scale(1.05);
+        }
+
+        .mic-btn.listening {
+            background: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .status {
+            margin-top: 16px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .transcript {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            font-size: 14px;
+            max-width: 300px;
+            text-align: center;
+        }
+
+        .error {
+            color: #ef4444;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <button class="mic-btn" id="micBtn">🎤</button>
+    <div class="status" id="status">Tap to speak</div>
+    <div class="transcript" id="transcript" style="display:none;"></div>
+    <div class="error" id="error"></div>
+
+    <script>
+        const micBtn = document.getElementById('micBtn');
+        const statusEl = document.getElementById('status');
+        const transcriptEl = document.getElementById('transcript');
+        const errorEl = document.getElementById('error');
+
+        let recognition = null;
+        let isListening = false;
+
+        // Check support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-IN';
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('listening');
+                micBtn.textContent = '🛑';
+                statusEl.textContent = '🔴 Listening...';
+                errorEl.textContent = '';
+            };
+
+            recognition.onresult = (event) => {
+                const result = event.results[event.resultIndex];
+                const text = result[0].transcript;
+                transcriptEl.textContent = '"' + text + '"';
+                transcriptEl.style.display = 'block';
+
+                if (result.isFinal) {
+                    // Send to parent
+                    window.parent.postMessage({ type: 'voice-result', transcript: text }, '*');
+                }
+            };
+
+            recognition.onerror = (event) => {
+                isListening = false;
+                micBtn.classList.remove('listening');
+                micBtn.textContent = '🎤';
+                statusEl.textContent = 'Tap to speak';
+                errorEl.textContent = 'Error: ' + event.error;
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('listening');
+                micBtn.textContent = '🎤';
+                statusEl.textContent = 'Tap to speak';
+            };
+        } else {
+            errorEl.textContent = 'Speech recognition not supported';
+            micBtn.disabled = true;
+        }
+
+        micBtn.addEventListener('click', () => {
+            if (!recognition) return;
+
+            if (isListening) {
+                recognition.stop();
+            } else {
+                transcriptEl.style.display = 'none';
+                recognition.start();
+            }
+        });
+    </script>
+</body>
+
+</html>
