@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'  # Triggers on version tags like v1.0.0, v1.2.3
 
+permissions:
+  contents: write  # Required for creating releases
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -25,12 +28,6 @@ jobs:
         run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PocketWall-Windows
-          path: dist/*.exe
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
