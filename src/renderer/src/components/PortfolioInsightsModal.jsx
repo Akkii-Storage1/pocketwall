@@ -1,14 +1,49 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, PieChart, TrendingUp, BarChart2, Activity, DollarSign, Calendar, Layers, Target, Shield, Zap } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, AreaChart, Area, LineChart, Line } from 'recharts';
 import CurrencyConverter from '../utils/CurrencyConverter';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
 
-const PortfolioInsightsModal = ({ isOpen, onClose, holdings, currency, isDark }) => {
-    const [activeTab, setActiveTab] = useState('overview');
+// Configuration for different analysis types
+const MODAL_CONFIG = {
+    portfolio: {
+        title: 'Portfolio Insights',
+        subtitle: 'Deep dive into your wealth analytics',
+        icon: Activity,
+        defaultTab: 'overview'
+    },
+    invested: {
+        title: 'Investment Analysis',
+        subtitle: 'Analyze your capital allocation',
+        icon: DollarSign,
+        defaultTab: 'costbasis'
+    },
+    profitloss: {
+        title: 'Profit & Loss Analysis',
+        subtitle: 'Track your gains and losses',
+        icon: TrendingUp,
+        defaultTab: 'winners'
+    },
+    daily: {
+        title: "Today's Performance",
+        subtitle: 'Analyze daily market movements',
+        icon: Zap,
+        defaultTab: 'movers'
+    }
+};
+
+const PortfolioInsightsModal = ({ isOpen, onClose, holdings, currency, isDark, analysisType = 'portfolio' }) => {
+    const config = MODAL_CONFIG[analysisType] || MODAL_CONFIG.portfolio;
+    const [activeTab, setActiveTab] = useState(config.defaultTab);
     const [projectionYears, setProjectionYears] = useState(5);
     const [monthlyContribution, setMonthlyContribution] = useState(5000);
+
+    // Reset tab when analysis type changes
+    useEffect(() => {
+        const cfg = MODAL_CONFIG[analysisType] || MODAL_CONFIG.portfolio;
+        setActiveTab(cfg.defaultTab);
+    }, [analysisType]);
 
     const bgColor = isDark ? '#1e1e1e' : '#ffffff';
     const textColor = isDark ? '#ffffff' : '#000000';
@@ -135,11 +170,11 @@ const PortfolioInsightsModal = ({ isOpen, onClose, holdings, currency, isDark })
                 <div className="p-4 border-b flex justify-between items-center" style={{ borderColor }}>
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-300">
-                            <Activity size={24} />
+                            <config.icon size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold" style={{ color: textColor }}>Portfolio Insights</h2>
-                            <p className="text-xs opacity-60" style={{ color: textColor }}>Deep dive into your wealth analytics</p>
+                            <h2 className="text-xl font-bold" style={{ color: textColor }}>{config.title}</h2>
+                            <p className="text-xs opacity-60" style={{ color: textColor }}>{config.subtitle}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
@@ -147,12 +182,40 @@ const PortfolioInsightsModal = ({ isOpen, onClose, holdings, currency, isDark })
                     </button>
                 </div>
 
-                {/* Tabs */}
+                {/* Tabs - Different for each analysis type */}
                 <div className="flex gap-2 p-4 border-b overflow-x-auto" style={{ borderColor }}>
-                    <TabButton id="overview" label="Overview" icon={Layers} />
-                    <TabButton id="performance" label="Performance" icon={TrendingUp} />
-                    <TabButton id="allocation" label="Allocation" icon={PieChart} />
-                    <TabButton id="projections" label="Time Machine" icon={Target} />
+                    {analysisType === 'portfolio' && (
+                        <>
+                            <TabButton id="overview" label="Overview" icon={Layers} />
+                            <TabButton id="performance" label="Performance" icon={TrendingUp} />
+                            <TabButton id="allocation" label="Allocation" icon={PieChart} />
+                            <TabButton id="projections" label="Time Machine" icon={Target} />
+                        </>
+                    )}
+                    {analysisType === 'invested' && (
+                        <>
+                            <TabButton id="costbasis" label="Cost Basis" icon={DollarSign} />
+                            <TabButton id="allocation" label="Allocation" icon={PieChart} />
+                            <TabButton id="rebalance" label="Rebalancing" icon={Target} />
+                            <TabButton id="history" label="History" icon={Calendar} />
+                        </>
+                    )}
+                    {analysisType === 'profitloss' && (
+                        <>
+                            <TabButton id="winners" label="Winners & Losers" icon={TrendingUp} />
+                            <TabButton id="byasset" label="By Asset" icon={BarChart2} />
+                            <TabButton id="breakdown" label="Breakdown" icon={Layers} />
+                            <TabButton id="tax" label="Tax Estimate" icon={Shield} />
+                        </>
+                    )}
+                    {analysisType === 'daily' && (
+                        <>
+                            <TabButton id="movers" label="Today's Movers" icon={Zap} />
+                            <TabButton id="bytype" label="By Type" icon={BarChart2} />
+                            <TabButton id="market" label="vs Market" icon={TrendingUp} />
+                            <TabButton id="streak" label="Streak" icon={Activity} />
+                        </>
+                    )}
                 </div>
 
                 {/* Content */}
@@ -426,6 +489,343 @@ const PortfolioInsightsModal = ({ isOpen, onClose, holdings, currency, isDark })
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ============ INVESTED ANALYSIS TABS ============ */}
+
+                    {/* Cost Basis Tab */}
+                    {activeTab === 'costbasis' && (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="p-4 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                    <div className="text-xs font-bold uppercase opacity-60 mb-1" style={{ color: textColor }}>Total Invested</div>
+                                    <div className="text-2xl font-bold text-blue-500">{formatMoney(totalInvested)}</div>
+                                </div>
+                                <div className="p-4 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                    <div className="text-xs font-bold uppercase opacity-60 mb-1" style={{ color: textColor }}>Current Value</div>
+                                    <div className="text-2xl font-bold" style={{ color: textColor }}>{formatMoney(totalValue)}</div>
+                                </div>
+                                <div className="p-4 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                    <div className="text-xs font-bold uppercase opacity-60 mb-1" style={{ color: textColor }}>Return on Investment</div>
+                                    <div className={`text-2xl font-bold ${totalPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {totalPnLPercent >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}%
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4" style={{ color: textColor }}>Cost Basis by Asset Type</h3>
+                                <div className="h-72">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={allocationData.map(a => ({ name: a.name, invested: holdings.filter(h => h.assetClass === a.name).reduce((s, h) => s + (h.totalInvested || 0), 0) }))}>
+                                            <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                            <XAxis dataKey="name" stroke={textColor} fontSize={12} />
+                                            <YAxis stroke={textColor} fontSize={12} tickFormatter={(val) => `${val / 1000}k`} />
+                                            <Tooltip formatter={(value) => formatMoney(value)} contentStyle={{ backgroundColor: bgColor, borderColor, color: textColor }} />
+                                            <Bar dataKey="invested" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Rebalance Tab */}
+                    {activeTab === 'rebalance' && (
+                        <div className="space-y-6">
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4" style={{ color: textColor }}>Current vs Ideal Allocation</h3>
+                                <div className="space-y-4">
+                                    {allocationData.map((a, i) => {
+                                        const pct = totalValue > 0 ? (a.value / totalValue) * 100 : 0;
+                                        const idealPct = 100 / allocationData.length; // Equal weight
+                                        const diff = pct - idealPct;
+                                        return (
+                                            <div key={a.name} className="flex items-center gap-4">
+                                                <div className="w-24 text-sm font-medium" style={{ color: textColor }}>{a.name}</div>
+                                                <div className="flex-1">
+                                                    <div className="h-4 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length] }} />
+                                                    </div>
+                                                </div>
+                                                <div className="w-16 text-right text-sm" style={{ color: textColor }}>{pct.toFixed(1)}%</div>
+                                                <div className={`w-20 text-right text-xs font-medium ${diff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                    {diff >= 0 ? '+' : ''}{diff.toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="mt-6 p-3 rounded bg-blue-50 dark:bg-blue-900/40 text-xs" style={{ color: textColor }}>
+                                    💡 Tip: Consider rebalancing assets with deviation &gt;10% from target allocation
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* History Tab */}
+                    {activeTab === 'history' && (
+                        <div className="space-y-6">
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4" style={{ color: textColor }}>Investment Summary</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                    <div>
+                                        <div className="text-3xl font-bold text-blue-500">{holdings.length}</div>
+                                        <div className="text-xs opacity-60" style={{ color: textColor }}>Total Holdings</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-3xl font-bold text-green-500">{holdings.filter(h => h.profitLoss >= 0).length}</div>
+                                        <div className="text-xs opacity-60" style={{ color: textColor }}>In Profit</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-3xl font-bold text-red-500">{holdings.filter(h => h.profitLoss < 0).length}</div>
+                                        <div className="text-xs opacity-60" style={{ color: textColor }}>In Loss</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-3xl font-bold" style={{ color: textColor }}>{new Set(holdings.map(h => h.assetClass)).size}</div>
+                                        <div className="text-xs opacity-60" style={{ color: textColor }}>Asset Types</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ============ PROFIT/LOSS ANALYSIS TABS ============ */}
+
+                    {/* Winners & Losers Tab */}
+                    {activeTab === 'winners' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4 text-green-500">🚀 Top Winners</h3>
+                                <div className="space-y-3">
+                                    {holdings.sort((a, b) => b.profitLossPercent - a.profitLossPercent).slice(0, 5).map((h, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: isDark ? '#1e1e1e' : '#f0f0f0' }}>
+                                            <div>
+                                                <div className="font-medium" style={{ color: textColor }}>{h.shortName || h.name || h.symbol}</div>
+                                                <div className="text-xs opacity-60" style={{ color: textColor }}>{h.assetClass} • {h.symbol}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-bold text-green-500">+{h.profitLossPercent?.toFixed(2)}%</div>
+                                                <div className="text-xs text-green-500">{formatMoney(h.profitLoss)}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4 text-red-500">📉 Biggest Losers</h3>
+                                <div className="space-y-3">
+                                    {holdings.sort((a, b) => a.profitLossPercent - b.profitLossPercent).slice(0, 5).map((h, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: isDark ? '#1e1e1e' : '#f0f0f0' }}>
+                                            <div>
+                                                <div className="font-medium" style={{ color: textColor }}>{h.shortName || h.name || h.symbol}</div>
+                                                <div className="text-xs opacity-60" style={{ color: textColor }}>{h.assetClass} • {h.symbol}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-bold text-red-500">{h.profitLossPercent?.toFixed(2)}%</div>
+                                                <div className="text-xs text-red-500">{formatMoney(h.profitLoss)}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* By Asset Tab */}
+                    {activeTab === 'byasset' && (
+                        <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                            <h3 className="font-bold mb-4" style={{ color: textColor }}>P&L by Asset Class</h3>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={performanceData} layout="vertical" margin={{ left: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} horizontal={false} />
+                                        <XAxis type="number" stroke={textColor} fontSize={12} tickFormatter={(val) => `${val / 1000}k`} />
+                                        <YAxis dataKey="name" type="category" stroke={textColor} fontSize={12} width={80} />
+                                        <Tooltip formatter={(value) => formatMoney(value)} contentStyle={{ backgroundColor: bgColor, borderColor, color: textColor }} />
+                                        <Bar dataKey="value" barSize={24} radius={[0, 4, 4, 0]}>
+                                            {performanceData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.value >= 0 ? '#10b981' : '#ef4444'} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Breakdown Tab */}
+                    {activeTab === 'breakdown' && (
+                        <div className="space-y-6">
+                            <div className="p-6 rounded-xl border text-center" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="text-lg font-semibold mb-2" style={{ color: textColor }}>Total Profit/Loss</h3>
+                                <div className={`text-4xl font-bold ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    {totalPnL >= 0 ? '+' : ''}{formatMoney(totalPnL)}
+                                </div>
+                                <div className={`text-lg ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    {totalPnLPercent.toFixed(2)}%
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl border text-center" style={{ backgroundColor: cardBg, borderColor }}>
+                                    <div className="text-2xl font-bold text-green-500">
+                                        {formatMoney(holdings.filter(h => h.profitLoss >= 0).reduce((s, h) => s + h.profitLoss, 0))}
+                                    </div>
+                                    <div className="text-xs opacity-60" style={{ color: textColor }}>Total Gains</div>
+                                </div>
+                                <div className="p-4 rounded-xl border text-center" style={{ backgroundColor: cardBg, borderColor }}>
+                                    <div className="text-2xl font-bold text-red-500">
+                                        {formatMoney(holdings.filter(h => h.profitLoss < 0).reduce((s, h) => s + h.profitLoss, 0))}
+                                    </div>
+                                    <div className="text-xs opacity-60" style={{ color: textColor }}>Total Losses</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tax Tab */}
+                    {activeTab === 'tax' && (
+                        <div className="space-y-6">
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4" style={{ color: textColor }}>⚠️ Estimated Tax Liability (Unrealized)</h3>
+                                <p className="text-sm opacity-70 mb-4" style={{ color: textColor }}>
+                                    This is a rough estimate. Consult a tax professional for accurate calculations.
+                                </p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 rounded border" style={{ borderColor }}>
+                                        <div className="text-xs opacity-60 mb-1" style={{ color: textColor }}>Short-Term Gains (if applicable)</div>
+                                        <div className="text-xl font-bold text-orange-500">
+                                            ~{formatMoney(Math.max(0, totalPnL) * 0.15)}
+                                        </div>
+                                        <div className="text-xs opacity-50" style={{ color: textColor }}>@15% rate</div>
+                                    </div>
+                                    <div className="p-4 rounded border" style={{ borderColor }}>
+                                        <div className="text-xs opacity-60 mb-1" style={{ color: textColor }}>Long-Term Gains (if applicable)</div>
+                                        <div className="text-xl font-bold text-green-500">
+                                            ~{formatMoney(Math.max(0, totalPnL - 100000) * 0.10)}
+                                        </div>
+                                        <div className="text-xs opacity-50" style={{ color: textColor }}>@10% (above ₹1L exemption)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ============ DAILY PERFORMANCE TABS ============ */}
+
+                    {/* Movers Tab */}
+                    {activeTab === 'movers' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4 text-green-500">📈 Today's Gainers</h3>
+                                <div className="space-y-3">
+                                    {holdings.filter(h => (h.dailyGain || 0) > 0).sort((a, b) => (b.dayChangePercent || 0) - (a.dayChangePercent || 0)).slice(0, 5).map((h, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: isDark ? '#1e1e1e' : '#f0f0f0' }}>
+                                            <div>
+                                                <div className="font-medium" style={{ color: textColor }}>{h.shortName || h.name || h.symbol}</div>
+                                                <div className="text-xs opacity-60" style={{ color: textColor }}>{h.assetClass} • {h.symbol}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-bold text-green-500">+{(h.dayChangePercent || 0).toFixed(2)}%</div>
+                                                <div className="text-xs text-green-500">+{formatMoney(h.dailyGain || 0)}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {holdings.filter(h => (h.dailyGain || 0) > 0).length === 0 && (
+                                        <div className="text-center opacity-50 py-4" style={{ color: textColor }}>No gainers today</div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="font-bold mb-4 text-red-500">📉 Today's Losers</h3>
+                                <div className="space-y-3">
+                                    {holdings.filter(h => (h.dailyGain || 0) < 0).sort((a, b) => (a.dayChangePercent || 0) - (b.dayChangePercent || 0)).slice(0, 5).map((h, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: isDark ? '#1e1e1e' : '#f0f0f0' }}>
+                                            <div>
+                                                <div className="font-medium" style={{ color: textColor }}>{h.shortName || h.name || h.symbol}</div>
+                                                <div className="text-xs opacity-60" style={{ color: textColor }}>{h.assetClass} • {h.symbol}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-bold text-red-500">{(h.dayChangePercent || 0).toFixed(2)}%</div>
+                                                <div className="text-xs text-red-500">{formatMoney(h.dailyGain || 0)}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {holdings.filter(h => (h.dailyGain || 0) < 0).length === 0 && (
+                                        <div className="text-center opacity-50 py-4" style={{ color: textColor }}>No losers today</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* By Type Tab */}
+                    {activeTab === 'bytype' && (
+                        <div className="p-5 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                            <h3 className="font-bold mb-4" style={{ color: textColor }}>Today's P&L by Asset Type</h3>
+                            <div className="h-72">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={Object.entries(
+                                        holdings.reduce((acc, h) => {
+                                            const type = h.assetClass || 'Other';
+                                            acc[type] = (acc[type] || 0) + (h.dailyGain || 0);
+                                            return acc;
+                                        }, {})
+                                    ).map(([name, value]) => ({ name, value }))}>
+                                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                        <XAxis dataKey="name" stroke={textColor} fontSize={12} />
+                                        <YAxis stroke={textColor} fontSize={12} />
+                                        <Tooltip formatter={(value) => formatMoney(value)} contentStyle={{ backgroundColor: bgColor, borderColor, color: textColor }} />
+                                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                            {Object.entries(holdings.reduce((acc, h) => {
+                                                const type = h.assetClass || 'Other';
+                                                acc[type] = (acc[type] || 0) + (h.dailyGain || 0);
+                                                return acc;
+                                            }, {})).map(([, value], index) => (
+                                                <Cell key={`cell-${index}`} fill={value >= 0 ? '#10b981' : '#ef4444'} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Market Tab */}
+                    {activeTab === 'market' && (
+                        <div className="space-y-6">
+                            <div className="p-5 rounded-xl border text-center" style={{ backgroundColor: cardBg, borderColor }}>
+                                <h3 className="text-lg font-semibold mb-2" style={{ color: textColor }}>Your Portfolio vs Market</h3>
+                                <div className={`text-4xl font-bold ${holdings.reduce((s, h) => s + (h.dailyGain || 0), 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    {holdings.reduce((s, h) => s + (h.dailyGain || 0), 0) >= 0 ? '+' : ''}
+                                    {formatMoney(holdings.reduce((s, h) => s + (h.dailyGain || 0), 0))}
+                                </div>
+                                <div className="text-sm opacity-60 mt-2" style={{ color: textColor }}>
+                                    Today's portfolio change
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-xl border" style={{ backgroundColor: cardBg, borderColor }}>
+                                <div className="text-sm opacity-70" style={{ color: textColor }}>
+                                    💡 Market comparison requires live market data. Check the Markets tab for index comparisons.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Streak Tab */}
+                    {activeTab === 'streak' && (
+                        <div className="p-5 rounded-xl border text-center" style={{ backgroundColor: cardBg, borderColor }}>
+                            <h3 className="text-lg font-semibold mb-4" style={{ color: textColor }}>Daily Performance</h3>
+                            <div className={`text-6xl font-bold mb-2 ${holdings.reduce((s, h) => s + (h.dailyGain || 0), 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {holdings.reduce((s, h) => s + (h.dailyGain || 0), 0) >= 0 ? '📈' : '📉'}
+                            </div>
+                            <div className={`text-2xl font-bold ${holdings.reduce((s, h) => s + (h.dailyGain || 0), 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {holdings.reduce((s, h) => s + (h.dailyGain || 0), 0) >= 0 ? 'GREEN DAY' : 'RED DAY'}
+                            </div>
+                            <div className="text-sm opacity-60 mt-4" style={{ color: textColor }}>
+                                Historical streak data requires transaction history tracking
                             </div>
                         </div>
                     )}

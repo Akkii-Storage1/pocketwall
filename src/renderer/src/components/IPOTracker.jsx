@@ -179,12 +179,14 @@ const IPOTracker = ({ isDark, currency, isOpen, onClose }) => {
                 resultDate: new Date().toISOString().split('T')[0]
             });
 
-            // 2. Add to Investments portfolio
+            // 2. Add to Investments portfolio with amount field
             await DataAdapter.addInvestment({
                 symbol: selectedItem.symbol || selectedItem.name.substring(0, 10).toUpperCase().replace(/\s/g, ''),
                 name: selectedItem.name,
                 quantity: allottedQty,
                 buyPrice: selectedItem.pricePerUnit,
+                amount: allottedAmount,
+                totalInvested: allottedAmount,
                 date: new Date().toISOString().split('T')[0],
                 exchange: selectedItem.exchange,
                 type: 'buy',
@@ -214,6 +216,7 @@ const IPOTracker = ({ isDark, currency, isOpen, onClose }) => {
             toast.error('Failed to process allotment');
         }
     };
+
 
     const getFilteredItems = () => {
         if (activeTab === 'all') return pendingInvestments;

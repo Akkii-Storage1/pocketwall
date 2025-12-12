@@ -53,6 +53,8 @@ import Signup from './pages/Signup';
 import { TrialExpiredOverlay } from './components/FeatureGate';
 import Celebration from './components/Celebration';
 import AIAssistant from './components/AIAssistant';
+import SIPManager from './components/SIPManager';
+import SIPDueModal from './components/SIPDueModal';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -79,6 +81,12 @@ const MainLayout = () => {
     const [showShortcutsModal, setShowShortcutsModal] = useState(false);
     const [showMigrationModal, setShowMigrationModal] = useState(false); // New State
     const [currency, setCurrency] = useState('INR');
+
+    // SIP System State
+    const [showSIPManager, setShowSIPManager] = useState(false);
+    const [showSIPDueModal, setShowSIPDueModal] = useState(false);
+    const [dueSIPs, setDueSIPs] = useState([]);
+    const [accounts, setAccounts] = useState([]);
     const [appearance, setAppearance] = useState({
         fontSize: 'medium',
         animations: true,
@@ -217,10 +225,36 @@ const MainLayout = () => {
     // Notifications
     useEffect(() => {
         NotificationManager.runChecks();
+
+        // Check for due SIPs on app start
+        const checkDueSIPs = async () => {
+            try {
+                const sips = await DataAdapter.getDueSIPs();
+                if (sips && sips.length > 0) {
+                    setDueSIPs(sips);
+                    setShowSIPDueModal(true);
+                }
+                // Also load accounts for SIP source selection
+                const txns = await DataAdapter.getTransactions();
+                const uniqueAccounts = [...new Set(txns.map(t => t.account).filter(Boolean))].map(name => ({ name }));
+                setAccounts(uniqueAccounts);
+            } catch (error) {
+                console.error('Error checking due SIPs:', error);
+            }
+        };
+        checkDueSIPs();
+
+        // Event listener for opening SIP Manager from other pages
+        const handleOpenSIPManager = () => setShowSIPManager(true);
+        window.addEventListener('openSIPManager', handleOpenSIPManager);
+
         const interval = setInterval(() => {
             NotificationManager.runChecks();
         }, 5 * 60 * 1000); // Check every 5 minutes
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('openSIPManager', handleOpenSIPManager);
+        };
     }, []);
 
     // Keyboard Shortcuts
@@ -486,6 +520,8 @@ const MainLayout = () => {
                         <>
                             <button onClick={() => handleNav('investments')} className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }}>Stocks & ETFs</button>
                             <button onClick={() => handleNav('mutualfunds')} className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }}>Mutual Funds</button>
+                            <button onClick={() => { setActiveMenu(null); setShowSIPManager(true); }} className="px-4 py-1 text-left hover:bg-green-500 hover:text-white text-xs font-medium" style={{ color: textColor }}>🔄 SIP Manager</button>
+                            <div className="border-b my-1" style={{ borderColor: dropdownBorder }}></div>
                             <button onClick={() => handleNav('markets')} className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }}>Markets</button>
                             <button onClick={() => handleNav('watchlist')} className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }}>👁️ Watchlist</button>
                             <button onClick={() => handleNav('assets')} className="px-4 py-1 text-left hover:bg-blue-500 hover:text-white text-xs" style={{ color: textColor }}>Fixed Assets</button>
@@ -687,6 +723,28 @@ const MainLayout = () => {
             {showShortcutsModal && (
                 <KeyboardShortcutsModal onClose={() => setShowShortcutsModal(false)} isDark={isDark} />
             )}
+
+            {/* SIP Manager Modal */}
+            <SIPManager
+                isOpen={showSIPManager}
+                onClose={() => setShowSIPManager(false)}
+                isDark={isDark}
+                currency={currency}
+                accounts={accounts}
+            />
+
+            {/* SIP Due Modal (shows on app start if SIPs are due) */}
+            <SIPDueModal
+                isOpen={showSIPDueModal}
+                onClose={() => setShowSIPDueModal(false)}
+                dueSIPs={dueSIPs}
+                onUpdate={async () => {
+                    const sips = await DataAdapter.getDueSIPs();
+                    setDueSIPs(sips);
+                }}
+                isDark={isDark}
+                accounts={accounts}
+            />
         </div>
     );
 }

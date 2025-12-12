@@ -440,7 +440,10 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
                 return;
             }
 
+            // Store original data for undo if editing
+            let originalTransaction = null;
             if (isEditing && editId) {
+                originalTransaction = transactions.find(t => t.id === editId);
                 await DataAdapter.deleteTransaction(editId);
             }
 
@@ -504,7 +507,37 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
 
             await loadTransactions();
             await loadPayees();
-            toast.success(isEditing ? 'Transaction updated' : 'Transaction saved');
+
+            // Show toast with Undo option for edits
+            if (isEditing && originalTransaction) {
+                const newTransactionId = transactionToSave.id || Date.now().toString();
+                toast.success('Transaction updated', {
+                    duration: 6000,
+                    action: {
+                        label: 'Undo',
+                        onClick: async () => {
+                            try {
+                                // Delete the new transaction and restore original
+                                const allTxns = await DataAdapter.getTransactions();
+                                const latestTxn = allTxns.find(t =>
+                                    t.payee === transactionToSave.payee &&
+                                    t.amount == transactionToSave.amount
+                                );
+                                if (latestTxn) {
+                                    await DataAdapter.deleteTransaction(latestTxn.id);
+                                }
+                                await DataAdapter.addTransaction(originalTransaction);
+                                await loadTransactions();
+                                toast.success('Edit undone!');
+                            } catch (err) {
+                                toast.error('Failed to undo');
+                            }
+                        }
+                    }
+                });
+            } else {
+                toast.success('Transaction saved');
+            }
             setShowForm(false);
         } catch (error) {
             toast.error('Failed to save transaction');

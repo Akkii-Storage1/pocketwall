@@ -140,10 +140,23 @@ const Investments = ({ isDark, isPrivacyMode, currency }) => {
         return 'Stock'; // Default to Indian Stock
     };
 
-    // Filter investments based on selected asset types
+    // Filter investments to exclude assets that have their own dedicated tabs
+    // Excluded: Mutual Fund (MutualFunds.jsx), Crypto (Crypto.jsx), Gold/Commodity (Commodities.jsx)
+    const EXCLUDED_ASSET_CLASSES = ['Mutual Fund', 'Crypto', 'Gold', 'Commodity'];
+    const EXCLUDED_EXCHANGES = ['MF']; // Mutual Fund exchange
+
     const getFilteredInvestments = () => {
-        if (assetFilters.length === 0) return [];
-        return investments.filter(inv => assetFilters.includes(getAssetType(inv)));
+        return investments.filter(inv => {
+            // Keep dividends for stocks shown here
+            if (inv.type === 'dividend') {
+                // Only show dividend if parent stock is not in excluded classes
+                return !EXCLUDED_ASSET_CLASSES.includes(inv.assetClass) && !EXCLUDED_EXCHANGES.includes(inv.exchange);
+            }
+            // Exclude if assetClass or exchange is in excluded list
+            if (EXCLUDED_ASSET_CLASSES.includes(inv.assetClass)) return false;
+            if (EXCLUDED_EXCHANGES.includes(inv.exchange)) return false;
+            return true;
+        });
     };
 
     // Live search with debounce
@@ -418,8 +431,27 @@ const Investments = ({ isDark, isPrivacyMode, currency }) => {
             }
 
             if (editingId) {
+                // Store original for undo
+                const originalInvestment = investments.find(inv => inv.id === editingId);
                 await DataAdapter.updateInvestment({ ...investment, id: editingId });
-                toast.success('Transaction updated');
+
+                toast.success('Transaction updated', {
+                    duration: 6000,
+                    action: {
+                        label: 'Undo',
+                        onClick: async () => {
+                            try {
+                                if (originalInvestment) {
+                                    await DataAdapter.updateInvestment(originalInvestment);
+                                    loadInvestments();
+                                    toast.success('Edit undone!');
+                                }
+                            } catch (err) {
+                                toast.error('Failed to undo');
+                            }
+                        }
+                    }
+                });
                 setEditingId(null);
             } else {
                 await DataAdapter.addInvestment(investment);
@@ -837,14 +869,15 @@ const Investments = ({ isDark, isPrivacyMode, currency }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {investments.length === 0 ? (
+                                        {getFilteredInvestments().length === 0 ? (
                                             <tr>
                                                 <td colSpan="7" className="p-8 text-center opacity-50" style={{ color: textColor }}>
-                                                    No transactions found. Add one to get started!
+                                                    No stock/ETF/bond transactions found.
+                                                    <div className="text-xs mt-2 opacity-70">Mutual Funds, Crypto, and Commodities are in their dedicated tabs.</div>
                                                 </td>
                                             </tr>
                                         ) : (
-                                            investments.map((inv) => (
+                                            getFilteredInvestments().map((inv) => (
                                                 <tr key={inv.id} className="border-b hover:bg-opacity-5 hover:bg-gray-500" style={{ borderColor }}>
                                                     <td className="p-2" style={{ color: textColor }}>{formatDate(inv.date, currency)}</td>
                                                     <td className="p-2">
@@ -906,34 +939,36 @@ const Investments = ({ isDark, isPrivacyMode, currency }) => {
                                                         </span>
                                                     </td>
                                                     <td className="p-2 text-center">
-                                                        <div className="flex justify-center gap-2">
+                                                        <div className="flex items-center justify-end gap-1 flex-nowrap">
                                                             {/* Record Dividend - only for buy type transactions */}
-                                                            {(inv.type === 'buy' || inv.type === 'bonus' || inv.type === 'rights') && (
+                                                            {(inv.type === 'buy' || inv.type === 'bonus' || inv.type === 'rights') ? (
                                                                 <button
                                                                     onClick={() => {
                                                                         // Group all transactions for this symbol
                                                                         const symbolInvs = investments.filter(i => i.symbol === inv.symbol);
                                                                         openDividendModal(inv.symbol, symbolInvs);
                                                                     }}
-                                                                    className="text-xs px-2 py-1 border rounded hover:bg-opacity-10 hover:bg-green-500"
+                                                                    className="text-xs px-1.5 py-1 border rounded hover:bg-green-500/10"
                                                                     style={{ color: '#10b981', borderColor: '#10b981' }}
                                                                     title="Record Dividend"
                                                                 >
                                                                     💰
                                                                 </button>
+                                                            ) : (
+                                                                <span className="w-7"></span>
                                                             )}
                                                             <button
                                                                 onClick={() => handleEdit(inv)}
-                                                                className="text-xs px-2 py-1 border rounded hover:bg-opacity-10 hover:bg-blue-500"
+                                                                className="text-xs px-2 py-1 border rounded hover:bg-blue-500/10"
                                                                 style={{ color: '#0078d4', borderColor: '#0078d4' }}
                                                             >
                                                                 Edit
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDelete(inv.id)}
-                                                                className="text-xs text-red-500 hover:text-red-700 px-2 py-1 border border-red-200 rounded hover:bg-red-50"
+                                                                className="text-xs px-2 py-1 border rounded text-red-500 border-red-300 hover:bg-red-500/10"
                                                             >
-                                                                Delete
+                                                                Del
                                                             </button>
                                                         </div>
                                                     </td>

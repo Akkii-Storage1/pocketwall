@@ -25,7 +25,7 @@ const MutualFunds = ({ isDark, currency }) => {
     // Transaction Form State
     const [editingId, setEditingId] = useState(null);
     const [addForm, setAddForm] = useState({
-        type: 'Lumpsum',
+        type: 'buy', // Changed from Lumpsum/SIP to buy (SIP is now in SIP Manager)
         date: new Date().toISOString().slice(0, 10),
         nav: '',
         amount: '',
@@ -211,7 +211,7 @@ const MutualFunds = ({ isDark, currency }) => {
 
             // Reset form
             setAddForm({
-                type: 'Lumpsum',
+                type: 'buy',
                 date: new Date().toISOString().slice(0, 10),
                 nav: '',
                 amount: '',
@@ -263,13 +263,20 @@ const MutualFunds = ({ isDark, currency }) => {
 
     return (
         <div className="h-full overflow-auto p-6" style={{ backgroundColor: bgColor, color: textColor }}>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
                         <span className="text-green-500">📈</span> Mutual Funds (India)
                     </h1>
-                    <p className="opacity-70">Track NAVs and Plan SIPs</p>
+                    <p className="text-sm opacity-60">Track NAVs and Add Transactions</p>
                 </div>
+                <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('openSIPManager'))}
+                    className="px-4 py-2 text-sm font-medium rounded border flex items-center gap-2"
+                    style={{ backgroundColor: cardBg, color: textColor, borderColor }}
+                >
+                    🔄 SIP Manager
+                </button>
             </div>
 
             {/* SIP Monitor */}
@@ -368,19 +375,7 @@ const MutualFunds = ({ isDark, currency }) => {
                                 )}
                             </div>
 
-                            <div className="flex gap-2 p-1 rounded border" style={{ borderColor }}>
-                                {['Lumpsum', 'SIP'].map(type => (
-                                    <button
-                                        key={type}
-                                        type="button"
-                                        onClick={() => setAddForm({ ...addForm, type })}
-                                        className={`flex-1 py-1 text-xs font-medium rounded transition-all ${addForm.type === type ? 'bg-blue-500 text-white shadow' : 'opacity-60 hover:opacity-100'}`}
-                                        style={{ color: addForm.type === type ? '#fff' : textColor }}
-                                    >
-                                        {type}
-                                    </button>
-                                ))}
-                            </div>
+                            {/* Removed Lumpsum/SIP toggle - SIP is now in SIP Manager */}
 
                             <div>
                                 <label className="block text-xs mb-1" style={{ color: textColor }}>Date</label>

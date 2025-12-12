@@ -22,6 +22,7 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
     const [allocationData, setAllocationData] = useState([]);
     const [bestWorst, setBestWorst] = useState({ best: null, worst: null });
     const [showInsightsModal, setShowInsightsModal] = useState(false);
+    const [analysisType, setAnalysisType] = useState('portfolio'); // 'portfolio' | 'invested' | 'profitloss' | 'daily'
     const toast = useToast();
 
     const textColor = isDark ? '#ffffff' : '#000000';
@@ -780,7 +781,7 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                 {/* Summary by Currency */}
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => setShowInsightsModal(true)}>
+                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => { setAnalysisType('portfolio'); setShowInsightsModal(true); }}>
                         <div className="text-xs opacity-60 mb-1" style={{ color: textColor }}>
                             {assetFilter.length < PORTFOLIO_CATEGORIES.length ? 'Filtered ' : 'Total '}Portfolio Value
                         </div>
@@ -789,7 +790,7 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                         </div>
                         <div className="text-xs opacity-50" style={{ color: textColor }}>{getFilteredHoldings().length} holdings</div>
                     </div>
-                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => setShowInsightsModal(true)}>
+                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => { setAnalysisType('invested'); setShowInsightsModal(true); }}>
                         <div className="text-xs opacity-60 mb-1" style={{ color: textColor }}>
                             {assetFilter.length < PORTFOLIO_CATEGORIES.length ? 'Filtered ' : 'Total '}Invested
                         </div>
@@ -797,7 +798,7 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                             {CurrencyConverter.format(getFilteredHoldings().reduce((acc, h) => acc + toDisplay(h.totalInvested, h.exchange), 0), currency)}
                         </div>
                     </div>
-                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => setShowInsightsModal(true)}>
+                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => { setAnalysisType('profitloss'); setShowInsightsModal(true); }}>
                         <div className="text-xs opacity-60 mb-1" style={{ color: textColor }}>
                             {assetFilter.length < PORTFOLIO_CATEGORIES.length ? 'Filtered ' : 'Total '}Profit/Loss
                         </div>
@@ -805,7 +806,7 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                             {CurrencyConverter.format(getFilteredHoldings().reduce((acc, h) => acc + toDisplay(h.profitLoss, h.exchange), 0), currency)}
                         </div>
                     </div>
-                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => setShowInsightsModal(true)}>
+                    <div className="border p-4 rounded cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-1" style={{ backgroundColor: panelBg, borderColor }} onClick={() => { setAnalysisType('daily'); setShowInsightsModal(true); }}>
                         <div className="text-xs opacity-60 mb-1" style={{ color: textColor }}>Today's P&L</div>
                         <div className="text-2xl font-bold sensitive-amount" style={{ color: getFilteredHoldings().reduce((acc, h) => acc + toDisplay(h.dailyGain || 0, h.exchange), 0) >= 0 ? '#10b981' : '#ef4444' }}>
                             {CurrencyConverter.format(getFilteredHoldings().reduce((acc, h) => acc + toDisplay(h.dailyGain || 0, h.exchange), 0), currency)}
@@ -966,6 +967,9 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                                     <th onClick={() => handleSort('currentValue')} className="text-right p-2 cursor-pointer hover:opacity-100">
                                         Value {sortConfig.key === 'currentValue' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
                                     </th>
+                                    <th onClick={() => handleSort('totalInvested')} className="text-right p-2 cursor-pointer hover:opacity-100">
+                                        Invested {sortConfig.key === 'totalInvested' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+                                    </th>
                                     <th onClick={() => handleSort('dayChangePercent')} className="text-right p-2 cursor-pointer hover:opacity-100">
                                         Day Chg {sortConfig.key === 'dayChangePercent' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
                                     </th>
@@ -1034,11 +1038,12 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                                                 </td>
                                                 <td className="text-right p-2 font-semibold" style={{ color: textColor }}></td>
                                                 <td className="text-right p-2 font-semibold" style={{ color: textColor }}></td>
-                                                <td className="text-right p-2 font-semibold sensitive-amount text-xs" style={{ color: textColor }}>
-                                                    Invested: {formatPrice(catTotalInvested, 'INR')}
-                                                </td>
+                                                <td className="text-right p-2 font-semibold" style={{ color: textColor }}></td>
                                                 <td className="text-right p-2 font-semibold sensitive-amount" style={{ color: textColor }}>
                                                     {formatPrice(catTotalValue, 'INR')}
+                                                </td>
+                                                <td className="text-right p-2 font-semibold sensitive-amount" style={{ color: textColor }}>
+                                                    {formatPrice(catTotalInvested, 'INR')}
                                                 </td>
                                                 <td className="text-right p-2 font-semibold" style={{ color: catDailyGain >= 0 ? '#10b981' : '#ef4444' }}>
                                                     <div className="flex flex-col items-end">
@@ -1079,8 +1084,12 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                                                     <td className="text-right p-2 sensitive-amount" style={{ color: textColor }}>{formatPrice(h.avgBuyPrice, h.exchange)}</td>
                                                     <td className="text-right p-2 sensitive-amount" style={{ color: textColor }}>{formatPrice(h.currentPrice, h.exchange)}</td>
                                                     <td className="text-right p-2 sensitive-amount" style={{ color: textColor }}>{formatPrice(h.currentValue, h.exchange)}</td>
+                                                    <td className="text-right p-2 sensitive-amount" style={{ color: textColor }}>{formatPrice(h.totalInvested, h.exchange)}</td>
                                                     <td className={`text-right p-2 ${h.dayChangePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                        {formatPercent(h.dayChangePercent)}
+                                                        {formatPrice(h.dayChange || 0, h.exchange)}
+                                                        <div className="text-[10px] opacity-70">
+                                                            {formatPercent(h.dayChangePercent)}
+                                                        </div>
                                                     </td>
                                                     <td className={`text-right p-2 sensitive-amount ${h.dailyGain >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                         {formatPrice(h.dailyGain, h.exchange)}
@@ -1303,9 +1312,10 @@ const Portfolio = ({ isDark, currency: globalCurrency }) => {
                 <PortfolioInsightsModal
                     isOpen={showInsightsModal}
                     onClose={() => setShowInsightsModal(false)}
-                    holdings={holdings}
+                    holdings={getFilteredHoldings()}
                     currency={currency}
                     isDark={isDark}
+                    analysisType={analysisType}
                 />
             </div >
         </FeatureGate >

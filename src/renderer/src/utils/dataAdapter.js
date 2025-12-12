@@ -20,7 +20,8 @@ const KEYS = {
     LOANS: 'pocketwall_loans',
     ASSETS: 'pocketwall_assets',
     CHARITY: 'pocketwall_charity',
-    TEMPLATES: 'pocketwall_transaction_templates'
+    TEMPLATES: 'pocketwall_transaction_templates',
+    SIPS: 'pocketwall_sips'
 };
 
 // Helper to simulate async delay for realism
@@ -28,6 +29,29 @@ const delay = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms));
 
 const dispatchSaveEvent = (msg = 'Data Saved') => {
     document.dispatchEvent(new CustomEvent('dataSaved', { detail: { message: msg } }));
+};
+
+// Helper to calculate next SIP due date
+const calculateNextSIPDueDate = (sipDay, startDate) => {
+    const today = new Date();
+    const start = startDate ? new Date(startDate) : today;
+
+    // Ensure sipDay is between 1-28 (to handle all months)
+    const day = Math.min(Math.max(parseInt(sipDay) || 1, 1), 28);
+
+    let nextDue = new Date(today.getFullYear(), today.getMonth(), day);
+
+    // If start date is in future, use start month
+    if (start > today) {
+        nextDue = new Date(start.getFullYear(), start.getMonth(), day);
+    }
+
+    // If nextDue is in past or today has passed, move to next month
+    if (nextDue <= today) {
+        nextDue.setMonth(nextDue.getMonth() + 1);
+    }
+
+    return nextDue.toISOString().split('T')[0];
 };
 
 const WebAdapter = {
@@ -183,6 +207,71 @@ const WebAdapter = {
         localStorage.setItem(KEYS.RECURRING, JSON.stringify(filtered));
         WebAdapter.cache.recurring = filtered;
         return true;
+    },
+
+    // --- SIPs (Systematic Investment Plans) ---
+    getSIPs: async () => {
+        await delay();
+        return JSON.parse(localStorage.getItem(KEYS.SIPS) || '[]');
+    },
+    getSIPById: async (id) => {
+        await delay();
+        const sips = JSON.parse(localStorage.getItem(KEYS.SIPS) || '[]');
+        return sips.find(s => s.id === id) || null;
+    },
+    addSIP: async (sip) => {
+        await delay();
+        const sips = JSON.parse(localStorage.getItem(KEYS.SIPS) || '[]');
+        const today = new Date().toISOString().split('T')[0];
+
+        // Calculate next due date
+        const sipDay = parseInt(sip.sipDay) || 1;
+        const nextDue = calculateNextSIPDueDate(sipDay, sip.startDate);
+
+        const newSIP = {
+            ...sip,
+            id: `sip_${Date.now()}`,
+            status: 'active',
+            skipCount: 0,
+            totalInstallments: 0,
+            totalInvested: 0,
+            lastExecutedDate: null,
+            nextDueDate: nextDue,
+            createdAt: today
+        };
+        sips.push(newSIP);
+        localStorage.setItem(KEYS.SIPS, JSON.stringify(sips));
+        dispatchSaveEvent('SIP Created');
+        return newSIP;
+    },
+    updateSIP: async (sip) => {
+        await delay();
+        const sips = JSON.parse(localStorage.getItem(KEYS.SIPS) || '[]');
+        const index = sips.findIndex(s => s.id === sip.id);
+        if (index !== -1) {
+            sips[index] = { ...sips[index], ...sip };
+            localStorage.setItem(KEYS.SIPS, JSON.stringify(sips));
+            dispatchSaveEvent('SIP Updated');
+        }
+        return sip;
+    },
+    deleteSIP: async (id) => {
+        await delay();
+        const sips = JSON.parse(localStorage.getItem(KEYS.SIPS) || '[]');
+        const filtered = sips.filter(s => s.id !== id);
+        localStorage.setItem(KEYS.SIPS, JSON.stringify(filtered));
+        dispatchSaveEvent('SIP Deleted');
+        return true;
+    },
+    getDueSIPs: async () => {
+        await delay();
+        const sips = JSON.parse(localStorage.getItem(KEYS.SIPS) || '[]');
+        const today = new Date().toISOString().split('T')[0];
+        return sips.filter(s =>
+            s.status === 'active' &&
+            s.nextDueDate &&
+            s.nextDueDate <= today
+        );
     },
 
     // --- Investments ---
