@@ -21,14 +21,55 @@ const KEYS = {
     ASSETS: 'pocketwall_assets',
     CHARITY: 'pocketwall_charity',
     TEMPLATES: 'pocketwall_transaction_templates',
-    SIPS: 'pocketwall_sips'
+    SIPS: 'pocketwall_sips',
+    // Crypto keys (were missing - causing factory reset issues)
+    CRYPTO_HOLDINGS: 'pocketwall_crypto_holdings',
+    CRYPTO_WATCHLIST: 'pocketwall_crypto_watchlist',
+    CRYPTO_PRICES: 'pocketwall_crypto_prices',
+    STORED_PRICES: 'pocketwall_stored_prices',
+    PIN: 'pocketwall_pin',
+    // Additional keys
+    RECYCLE_BIN: 'pocketwall_recycle_bin',
+    CATEGORIES: 'pocketwall_categories',
+    LAST_SYNC: 'pocketwall_last_sync'
 };
+
+// Cloud Sync enabled flag
+let cloudSyncEnabled = true;
 
 // Helper to simulate async delay for realism
 const delay = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms));
 
 const dispatchSaveEvent = (msg = 'Data Saved') => {
     document.dispatchEvent(new CustomEvent('dataSaved', { detail: { message: msg } }));
+    // Auto-sync to cloud after every save (debounced)
+    triggerCloudSync();
+};
+
+// Debounced cloud sync to avoid too many API calls
+let syncTimeout = null;
+const triggerCloudSync = async () => {
+    if (!cloudSyncEnabled) return;
+
+    // Debounce: wait 2 seconds after last change before syncing
+    if (syncTimeout) clearTimeout(syncTimeout);
+
+    syncTimeout = setTimeout(async () => {
+        try {
+            // Dynamic import to avoid circular dependencies
+            const { pushToCloud } = await import('./CloudSync');
+            const data = await WebAdapter.getAllData();
+            await pushToCloud(data);
+        } catch (error) {
+            console.warn('Cloud sync failed:', error);
+        }
+    }, 2000);
+};
+
+// Enable/disable cloud sync
+export const setCloudSyncEnabled = (enabled) => {
+    cloudSyncEnabled = enabled;
+    console.log('Cloud sync:', enabled ? 'enabled' : 'disabled');
 };
 
 // Helper to calculate next SIP due date
@@ -689,20 +730,96 @@ const WebAdapter = {
         await delay();
         console.log('=== FACTORY RESET START ===');
 
-        // Clear EVERYTHING related to the app
-        const allKeys = Object.keys(localStorage);
-        const appKeys = allKeys.filter(key =>
-            key.startsWith('pocketwall_') ||
-            key === 'budgetLimits' ||
-            key === 'feature_flags'
-        );
-
-        appKeys.forEach(key => {
+        // 1. Clear all keys from KEYS object
+        Object.values(KEYS).forEach(key => {
+            console.log(`Removing KEYS: ${key}`);
             localStorage.removeItem(key);
         });
 
-        console.log('=== FACTORY RESET END ===');
+        // 2. Clear ALL pocketwall_ prefixed keys (catches any missed ones)
+        const allKeys = Object.keys(localStorage);
+        allKeys.forEach(key => {
+            if (key.startsWith('pocketwall_') ||
+                key === 'budgetLimits' ||
+                key === 'feature_flags' ||
+                key === 'trial_data' ||
+                key === 'activation_key') {
+                console.log(`Removing: ${key}`);
+                localStorage.removeItem(key);
+            }
+        });
+
+        // 3. Clear sessionStorage too
+        sessionStorage.clear();
+
+        // 4. Clear cache
+        WebAdapter.cache = { transactions: null, payees: null, recurring: null };
+
+        console.log('=== FACTORY RESET COMPLETE ===');
+        console.log('Remaining localStorage keys:', Object.keys(localStorage));
         return true;
+    },
+
+    // Cloud Sync: Pull data from cloud and merge with local
+    syncFromCloud: async () => {
+        try {
+            const { pullFromCloud } = await import('./CloudSync');
+            const cloudResult = await pullFromCloud();
+
+            if (!cloudResult || !cloudResult.data) {
+                console.log('CloudSync: No cloud data to sync');
+                return { success: true, message: 'No cloud data found' };
+            }
+
+            const cloudData = cloudResult.data;
+            console.log('CloudSync: Importing cloud data...');
+
+            // Import cloud data (merge with local)
+            if (cloudData.transactions) {
+                const local = JSON.parse(localStorage.getItem(KEYS.TRANSACTIONS) || '[]');
+                // Merge: cloud data takes precedence for same IDs
+                const merged = [...local];
+                cloudData.transactions.forEach(ct => {
+                    const idx = merged.findIndex(lt => lt.id === ct.id);
+                    if (idx >= 0) merged[idx] = ct;
+                    else merged.push(ct);
+                });
+                localStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(merged));
+            }
+
+            if (cloudData.investments) localStorage.setItem(KEYS.INVESTMENTS, JSON.stringify(cloudData.investments));
+            if (cloudData.goals) localStorage.setItem(KEYS.GOALS, JSON.stringify(cloudData.goals));
+            if (cloudData.recurring) localStorage.setItem(KEYS.RECURRING, JSON.stringify(cloudData.recurring));
+            if (cloudData.settings) localStorage.setItem(KEYS.SETTINGS, JSON.stringify(cloudData.settings));
+            if (cloudData.budgets) localStorage.setItem(KEYS.BUDGETS, JSON.stringify(cloudData.budgets));
+            if (cloudData.friends) localStorage.setItem(KEYS.FRIENDS, JSON.stringify(cloudData.friends));
+            if (cloudData.shared_expenses) localStorage.setItem(KEYS.SHARED_EXPENSES, JSON.stringify(cloudData.shared_expenses));
+            if (cloudData.reminders) localStorage.setItem(KEYS.REMINDERS, JSON.stringify(cloudData.reminders));
+            if (cloudData.loans) localStorage.setItem(KEYS.LOANS, JSON.stringify(cloudData.loans));
+            if (cloudData.assets) localStorage.setItem(KEYS.ASSETS, JSON.stringify(cloudData.assets));
+            if (cloudData.charity) localStorage.setItem(KEYS.CHARITY, JSON.stringify(cloudData.charity));
+            if (cloudData.crypto_holdings) localStorage.setItem(KEYS.CRYPTO_HOLDINGS, JSON.stringify(cloudData.crypto_holdings));
+            if (cloudData.crypto_watchlist) localStorage.setItem(KEYS.CRYPTO_WATCHLIST, JSON.stringify(cloudData.crypto_watchlist));
+            if (cloudData.sips) localStorage.setItem(KEYS.SIPS, JSON.stringify(cloudData.sips));
+            if (cloudData.templates) localStorage.setItem(KEYS.TEMPLATES, JSON.stringify(cloudData.templates));
+
+            // Save last sync time
+            localStorage.setItem(KEYS.LAST_SYNC, new Date().toISOString());
+
+            // Clear cache to force reload
+            WebAdapter.cache = { transactions: null, payees: null, recurring: null };
+
+            console.log('CloudSync: Data synced successfully');
+            return { success: true, message: 'Data synced from cloud' };
+        } catch (error) {
+            console.error('CloudSync: Sync failed', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    // Get last sync time
+    getLastSyncTime: () => {
+        return localStorage.getItem(KEYS.LAST_SYNC);
     }
 };
 

@@ -155,6 +155,15 @@ export const AuthProvider = ({ children }) => {
                 } catch (error) {
                     console.error("Error fetching user plan:", error);
                 }
+
+                // Cloud Sync: Pull data from cloud on login
+                try {
+                    const DataAdapter = (await import('../utils/dataAdapter')).default;
+                    const syncResult = await DataAdapter.syncFromCloud();
+                    console.log('Cloud sync on login:', syncResult);
+                } catch (error) {
+                    console.warn('Cloud sync on login failed:', error);
+                }
             } else {
                 setCurrentUser(null);
                 setUserPlan('free');

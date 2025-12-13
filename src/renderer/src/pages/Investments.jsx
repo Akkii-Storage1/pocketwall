@@ -893,7 +893,16 @@ const Investments = ({ isDark, isPrivacyMode, currency }) => {
                                                                 💰 Dividend
                                                             </span>
                                                         ) : inv.type === 'buy' ? (
-                                                            <span className="text-green-500 font-semibold text-xs">🟢 Buy</span>
+                                                            <div className="flex flex-col items-center gap-0.5">
+                                                                <span className="text-green-500 font-semibold text-xs">🟢 Buy</span>
+                                                                {(inv.note?.toLowerCase().includes('sip') || inv.type === 'SIP') && (
+                                                                    <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-500">🔄 SIP</span>
+                                                                )}
+                                                            </div>
+                                                        ) : inv.type === 'SIP' ? (
+                                                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-500">
+                                                                🔄 SIP
+                                                            </span>
                                                         ) : inv.type === 'sell' ? (
                                                             <span className="text-red-500 font-semibold text-xs">🔴 Sell</span>
                                                         ) : inv.type === 'bonus' ? (

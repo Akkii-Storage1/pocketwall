@@ -1,7 +1,33 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
 const Home = () => {
+    // Dynamic download URL from GitHub releases
+    const [downloadUrl, setDownloadUrl] = useState('https://github.com/Akkii-Storage1/pocketwall/releases/latest');
+    const [latestVersion, setLatestVersion] = useState('');
+
+    useEffect(() => {
+        // Fetch latest release from GitHub API
+        fetch('https://api.github.com/repos/Akkii-Storage1/pocketwall/releases/latest')
+            .then(res => res.json())
+            .then(data => {
+                if (data.assets && data.assets.length > 0) {
+                    // Find the Windows EXE file
+                    const exeAsset = data.assets.find(a => a.name.endsWith('.exe'));
+                    if (exeAsset) {
+                        setDownloadUrl(exeAsset.browser_download_url);
+                    }
+                }
+                if (data.tag_name) {
+                    setLatestVersion(data.tag_name);
+                }
+            })
+            .catch(err => {
+                console.warn('Failed to fetch latest release:', err);
+                // Keep fallback URL
+            });
+    }, []);
     const features = [
         {
             icon: '💰',
@@ -367,13 +393,13 @@ const Home = () => {
 
                             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                                 <a
-                                    href="https://github.com/Akkii-Storage1/pocketwall/releases/download/v1.2.3/PocketWall.Setup.1.2.3.exe"
+                                    href={downloadUrl}
                                     className="inline-flex items-center justify-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105"
                                 >
                                     <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
                                     </svg>
-                                    Download for Windows
+                                    Download for Windows {latestVersion && `(${latestVersion})`}
                                 </a>
                                 <Link
                                     to="/signup"

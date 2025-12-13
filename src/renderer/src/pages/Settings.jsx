@@ -180,6 +180,44 @@ const Settings = ({ isDark, theme, setTheme }) => {
         e.target.value = '';
     };
 
+    const handleFactoryReset = async () => {
+        // First confirmation
+        if (!confirm('⚠️ WARNING: Factory Reset will DELETE ALL your data including:\n\n• All transactions\n• All investments\n• All goals\n• Crypto holdings\n• Settings and PIN\n• Everything!\n\nThis action CANNOT be undone. Continue?')) {
+            return;
+        }
+
+        // Second confirmation - require typing
+        const confirmText = prompt('To confirm, type "DELETE" (all caps):');
+        if (confirmText !== 'DELETE') {
+            toast.info('Factory reset cancelled');
+            return;
+        }
+
+        try {
+            // Clear all app data
+            await DataAdapter.resetApp();
+
+            // Also logout if logged in
+            if (currentUser) {
+                try {
+                    await logout();
+                } catch (e) {
+                    console.warn('Logout failed during reset:', e);
+                }
+            }
+
+            toast.success('All data cleared. Reloading app...');
+
+            // Reload the app
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } catch (error) {
+            console.error('Factory reset failed:', error);
+            toast.error('Factory reset failed: ' + error.message);
+        }
+    };
+
     const handleEmailSupport = () => {
         const subject = encodeURIComponent("PocketWall Support / Feedback");
         const body = encodeURIComponent("Hi PocketWall Team,\n\nI have some feedback/questions:\n\n");
@@ -928,6 +966,72 @@ const Settings = ({ isDark, theme, setTheme }) => {
                     {/* Data Tab */}
                     {activeTab === 'data' && (
                         <div className="max-w-2xl space-y-6">
+                            {/* Cloud Sync Section */}
+                            <div className="border p-4 rounded" style={{ backgroundColor: panelBg, borderColor }}>
+                                <h3 className="font-semibold mb-4 text-lg flex items-center gap-2" style={{ color: textColor }}>
+                                    ☁️ Cloud Sync
+                                    {currentUser && (
+                                        <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full">
+                                            Connected
+                                        </span>
+                                    )}
+                                </h3>
+                                {currentUser ? (
+                                    <>
+                                        <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
+                                            Your data syncs automatically to the cloud when you make changes.
+                                            Login on another device to access your data anywhere.
+                                        </p>
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="text-sm" style={{ color: textColor }}>
+                                                <span className="opacity-70">Last synced: </span>
+                                                <span className="font-medium">
+                                                    {(() => {
+                                                        const lastSync = localStorage.getItem('pocketwall_last_sync');
+                                                        if (!lastSync) return 'Never';
+                                                        const date = new Date(lastSync);
+                                                        return date.toLocaleString();
+                                                    })()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    toast.info('Syncing...');
+                                                    const result = await DataAdapter.syncFromCloud();
+                                                    if (result.success) {
+                                                        toast.success('Data synced from cloud!');
+                                                        window.location.reload();
+                                                    } else {
+                                                        toast.error('Sync failed: ' + result.message);
+                                                    }
+                                                } catch (error) {
+                                                    toast.error('Sync failed: ' + error.message);
+                                                }
+                                            }}
+                                            className="px-4 py-2 text-sm border font-semibold rounded hover:bg-opacity-90"
+                                            style={{
+                                                backgroundColor: '#0078d4',
+                                                color: 'white',
+                                                borderColor: '#005a9e'
+                                            }}
+                                        >
+                                            🔄 Sync Now
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="text-sm p-4 border rounded" style={{ borderColor, backgroundColor: isDark ? '#1e1e1e' : '#f5f5f5' }}>
+                                        <p className="mb-3" style={{ color: textColor }}>
+                                            ⚠️ Sign in to enable cloud sync. Your data will be automatically backed up and accessible across devices.
+                                        </p>
+                                        <a href="#" onClick={() => navigate('/login')} className="text-blue-500 hover:underline">
+                                            Sign in to enable →
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="border p-4 rounded" style={{ backgroundColor: panelBg, borderColor }}>
                                 <h3 className="font-semibold mb-4 text-lg" style={{ color: textColor }}>Backup & Restore</h3>
                                 <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
