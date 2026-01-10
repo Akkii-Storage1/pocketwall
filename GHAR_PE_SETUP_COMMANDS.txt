@@ -1,0 +1,187 @@
+# =====================================================
+# 🏠 GHAR PE SETUP KAISE KAREIN - COMPLETE GUIDE
+# =====================================================
+# 
+# Is file mein saari commands hain jo ghar ke PC pe 
+# run karni hain. Step by step follow karo.
+#
+# =====================================================
+
+# =====================================================
+# STEP 1: PRE-REQUISITES INSTALL KARO
+# =====================================================
+
+## 1.1 Node.js Download aur Install karo
+## URL: https://nodejs.org/
+## Version: LTS (20.x ya 18.x)
+
+## 1.2 Git Download aur Install karo  
+## URL: https://git-scm.com/download/win
+
+## 1.3 Verify karo (PowerShell mein):
+node -v
+git --version
+
+# =====================================================
+# STEP 2: FILES COPY KARO PENDRIVE SE
+# =====================================================
+
+## 2.1 Pendrive connect karo (assume F: drive hai)
+
+## 2.2 PocketWall folder copy karo:
+## PowerShell Admin mode mein run karo:
+
+# Create destination folder
+New-Item -ItemType Directory -Path "C:\Dev" -Force
+
+# Copy project files
+Copy-Item -Path "F:\Office Project Shift\PocketWall" -Destination "C:\Dev\PocketWall" -Recurse -Force
+
+## 2.3 Antigravity brain files copy karo:
+
+# Apna Windows username daalo (Ankit Dixit ki jagah)
+$username = $env:USERNAME
+New-Item -ItemType Directory -Path "C:\Users\$username\.gemini\antigravity\brain" -Force
+
+# Copy brain files
+Copy-Item -Path "F:\Office Project Shift\Antigravity-Brain" -Destination "C:\Users\$username\.gemini\antigravity\brain\PocketWall-Session" -Recurse -Force
+
+# =====================================================
+# STEP 3: NPM DEPENDENCIES INSTALL KARO
+# =====================================================
+
+## PowerShell mein:
+cd C:\Dev\PocketWall
+npm install
+
+## Ye 2-5 minute lega. Wait karo.
+
+# =====================================================
+# STEP 4: PROJECT RUN KARO
+# =====================================================
+
+## Development mode mein run karo:
+npm run dev
+
+## Electron window automatically open hoga!
+
+# =====================================================
+# STEP 5: ANTIGRAVITY KO PROJECT SAMJHAO
+# =====================================================
+
+## Antigravity/Gemini AI se baat karte waqt ye bolo:
+
+## "Please read the file C:\Dev\PocketWall\CLAUDE_CONTEXT_PROMPT.md
+## This contains complete project context for PocketWall app.
+## 
+## Key points:
+## - Electron + React + Firebase app
+## - 30+ features implemented
+## - Budget insights with clickable cards
+## - Dashboard customization
+## - Light/Dark theme support
+##
+## Kya karna hai aage?"
+
+# =====================================================
+# QUICK REFERENCE - COMMON COMMANDS
+# =====================================================
+
+## Run development server:
+npm run dev
+
+## Build for production:
+npm run build
+
+## Create Windows installer:
+npm run build:win
+
+## Stop server:
+## Terminal mein Ctrl+C press karo
+
+# =====================================================
+# TROUBLESHOOTING
+# =====================================================
+
+## Problem: npm install failed
+## Solution:
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+Remove-Item package-lock.json -ErrorAction SilentlyContinue
+npm cache clean --force
+npm install
+
+## Problem: Port 5173 already in use
+## Solution:
+netstat -ano | findstr :5173
+# Jo PID dikhe usko kill karo:
+taskkill /PID <PID_NUMBER> /F
+
+## Problem: Electron not opening
+## Solution:
+taskkill /F /IM electron.exe -ErrorAction SilentlyContinue
+npm run dev
+
+# =====================================================
+# FILES STRUCTURE ON PENDRIVE
+# =====================================================
+#
+# F:\Office Project Shift\
+# │
+# ├── PocketWall\              <- Complete source code
+# │   ├── src\                 <- React + Electron code
+# │   ├── website\             <- Marketing website
+# │   ├── .github\             <- GitHub Actions
+# │   ├── package.json         <- Dependencies
+# │   ├── CLAUDE_CONTEXT_PROMPT.md  <- AI ko ye padhao
+# │   ├── SETUP_GUIDE_HINGLISH.md   <- Detailed guide
+# │   ├── DEPENDENCIES_LIST.txt     <- Saari installations
+# │   └── ...config files
+# │
+# ├── Antigravity-Brain\       <- Session history
+# │   ├── task.md              <- Task progress
+# │   ├── implementation_plan.md
+# │   ├── walkthrough.md
+# │   └── *.png, *.webp        <- Screenshots
+# │
+# └── GHAR_PE_SETUP_COMMANDS.txt  <- YE FILE (abhi padh rahe ho)
+#
+# =====================================================
+
+# =====================================================
+# ALL POWERSHELL COMMANDS - COPY PASTE READY
+# =====================================================
+
+# --- FULL SETUP SCRIPT (Run in Admin PowerShell) ---
+
+# Check pre-requisites
+Write-Host "Checking Node.js..." -ForegroundColor Cyan
+node -v
+Write-Host "Checking Git..." -ForegroundColor Cyan  
+git --version
+
+# Create folders
+Write-Host "Creating folders..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Path "C:\Dev" -Force | Out-Null
+
+# Copy project (change F: to your pendrive letter if different)
+Write-Host "Copying project files..." -ForegroundColor Yellow
+Copy-Item -Path "F:\Office Project Shift\PocketWall" -Destination "C:\Dev\PocketWall" -Recurse -Force
+
+# Copy brain files
+$username = $env:USERNAME
+$brainPath = "C:\Users\$username\.gemini\antigravity\brain"
+New-Item -ItemType Directory -Path $brainPath -Force | Out-Null
+Copy-Item -Path "F:\Office Project Shift\Antigravity-Brain" -Destination "$brainPath\PocketWall-Session" -Recurse -Force
+
+# Install dependencies
+Write-Host "Installing npm dependencies..." -ForegroundColor Yellow
+Set-Location "C:\Dev\PocketWall"
+npm install
+
+# Done!
+Write-Host "`n✅ SETUP COMPLETE!" -ForegroundColor Green
+Write-Host "Run 'npm run dev' to start the app" -ForegroundColor Cyan
+
+# =====================================================
+# END OF FILE
+# =====================================================

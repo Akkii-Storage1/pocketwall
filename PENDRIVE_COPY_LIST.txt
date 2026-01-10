@@ -1,0 +1,158 @@
+# =====================================================
+# POCKETWALL - PENDRIVE COPY LIST
+# =====================================================
+# Ye saari files/folders pendrive mein copy karo
+# Ghar ke PC pe exact same paths pe paste karo
+
+# =====================================================
+# FOLDER 1: PROJECT SOURCE CODE
+# =====================================================
+# 
+# Source Path:  C:\Dev\PocketWall\
+# Target Path:  C:\Dev\PocketWall\  (pendrive pe bhi same rakhna)
+#
+# COPY KARO:
+# - PocketWall folder ka pura copy (exclude: node_modules, dist, out)
+#
+# Specifically include:
+#   [✓] src\                        # All source code
+#   [✓] website\                    # Marketing website code
+#   [✓] .github\                    # GitHub Actions workflows
+#   [✓] package.json                # Dependencies list
+#   [✓] package-lock.json           # Locked versions
+#   [✓] electron.vite.config.mjs    # Electron vite config
+#   [✓] tailwind.config.js          # Tailwind configuration
+#   [✓] postcss.config.js           # PostCSS config
+#   [✓] vite.config.web.js          # Web vite config
+#   [✓] .eslintrc.cjs               # ESLint rules
+#   [✓] .prettierrc.yaml            # Prettier config
+#   [✓] electron-builder.yml        # Builder config (if exists)
+#   [✓] CLAUDE_CONTEXT_PROMPT.md    # AI context file
+#   [✓] DEPENDENCIES_LIST.txt       # This file
+#   [✓] SETUP_GUIDE_HINGLISH.md     # Setup guide
+#   [✓] README.md                   # Project readme
+#
+# SKIP KARO (ye bade hain, npm install se aa jayenge):
+#   [✗] node_modules\               # 500MB+ - skip!
+#   [✗] dist\                       # Build output - skip!
+#   [✗] out\                        # Build output - skip!
+
+# =====================================================
+# FOLDER 2: ANTIGRAVITY BRAIN FILES
+# =====================================================
+#
+# Source Path:  C:\Users\Ankit Dixit\.gemini\antigravity\brain\
+# Target Path:  C:\Users\{YOUR_USERNAME}\.gemini\antigravity\brain\
+#
+# NOTE: Folder hidden ho sakta hai. Show hidden files enable karo.
+#
+# COPY KARO - Complete folder with subfolders:
+#   [✓] 50285d4c-5cbe-4131-9ad4-61c6a085de13\  # Session ID folder
+#       Contains:
+#       - task.md                    # Current task progress
+#       - implementation_plan.md     # Implementation plans
+#       - walkthrough.md             # Feature walkthroughs
+#       - *.png, *.webp              # Screenshots
+#       - *.metadata.json            # Metadata files
+#       - *.resolved.*               # All resolved versions
+#       - competitive_analysis.md    # Analysis docs
+#       - feature_analysis_report.md # Feature reports
+#       - PocketWall_Master_Blueprint.md  # Master plan
+
+# =====================================================
+# FOLDER 3: VS CODE SETTINGS (Optional)
+# =====================================================
+#
+# Source Path:  C:\Dev\PocketWall\.vscode\  (agar hai to)
+# Target Path:  C:\Dev\PocketWall\.vscode\
+#
+# Contains:
+#   [✓] settings.json               # Project-specific settings
+#   [✓] extensions.json             # Recommended extensions
+#   [✓] launch.json                 # Debug configurations
+
+# =====================================================
+# FOLDER 4: GIT HISTORY (Important!)
+# =====================================================
+#
+# Source Path:  C:\Dev\PocketWall\.git\
+# Target Path:  C:\Dev\PocketWall\.git\
+#
+# COPY KARO - Complete .git folder
+# Ye git history ko preserve karega
+#
+# NOTE: .git folder hidden hai. Show hidden files enable karo.
+
+# =====================================================
+# PENDRIVE FOLDER STRUCTURE
+# =====================================================
+#
+# PENDRIVE_ROOT/
+# ├── PocketWall/                    (Project source code)
+# │   ├── src/
+# │   ├── website/
+# │   ├── .github/
+# │   ├── .git/                      (Hidden - git history)
+# │   ├── package.json
+# │   ├── CLAUDE_CONTEXT_PROMPT.md
+# │   ├── DEPENDENCIES_LIST.txt
+# │   ├── SETUP_GUIDE_HINGLISH.md
+# │   └── ...other config files
+# │
+# └── antigravity-brain/             (Antigravity session files)
+#     └── 50285d4c-5cbe-4131-9ad4-61c6a085de13/
+#         ├── task.md
+#         ├── implementation_plan.md
+#         ├── walkthrough.md
+#         ├── *.png, *.webp
+#         └── ...other session files
+
+# =====================================================
+# COPY STEPS (PowerShell Commands)
+# =====================================================
+
+# Step 1: Create pendrive folders (E: = pendrive drive letter)
+# mkdir E:\PocketWall
+# mkdir E:\antigravity-brain
+
+# Step 2: Copy PocketWall (excluding heavy folders)
+# robocopy "C:\Dev\PocketWall" "E:\PocketWall" /E /XD node_modules dist out
+
+# Step 3: Copy Antigravity brain
+# robocopy "C:\Users\Ankit Dixit\.gemini\antigravity\brain\50285d4c-5cbe-4131-9ad4-61c6a085de13" "E:\antigravity-brain\50285d4c-5cbe-4131-9ad4-61c6a085de13" /E
+
+# =====================================================
+# GHAR PE PASTE STEPS
+# =====================================================
+
+# Step 1: Copy PocketWall to C:\Dev\
+# robocopy "E:\PocketWall" "C:\Dev\PocketWall" /E
+
+# Step 2: Copy brain files to .gemini folder
+# robocopy "E:\antigravity-brain\50285d4c-5cbe-4131-9ad4-61c6a085de13" "C:\Users\{USERNAME}\.gemini\antigravity\brain\50285d4c-5cbe-4131-9ad4-61c6a085de13" /E
+
+# Step 3: Install dependencies
+# cd C:\Dev\PocketWall
+# npm install
+
+# Step 4: Run project
+# npm run dev
+
+# =====================================================
+# IMPORTANT NOTES
+# =====================================================
+
+# 1. node_modules folder copy MAT karna - bahut bada hai (500MB+)
+#    npm install se saari cheezon install ho jayengi
+
+# 2. .git folder zaroor copy karna - git history ke liye
+
+# 3. .gemini folder hidden hoti hai - show hidden files enable karo
+
+# 4. Session ID (50285d4c-...) same rahega - Antigravity iski zarurat hai
+
+# 5. Username different ho to path mein apna username daalna
+
+# =====================================================
+# END OF FILE
+# =====================================================

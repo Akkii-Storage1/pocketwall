@@ -817,7 +817,7 @@ const AIAssistant = ({ isDark }) => {
     const styles = {
         // Floating button
         fab: {
-            position: 'fixed', bottom: 24, right: 24, width: 64, height: 64, borderRadius: 20,
+            position: 'fixed', bottom: 100, right: 24, width: 64, height: 64, borderRadius: 20,
             background: isDark
                 ? 'linear-gradient(145deg, #2d2d30, #1e1e1e)'
                 : 'linear-gradient(145deg, #ffffff, #f0f0f0)',

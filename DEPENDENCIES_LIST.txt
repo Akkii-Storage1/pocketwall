@@ -1,0 +1,188 @@
+# PocketWall - Complete Dependencies & Installation List
+# =======================================================
+# This file contains ALL software, packages, and tools needed
+# to run PocketWall development environment.
+
+# ============================================================
+# SECTION 1: GLOBAL SOFTWARE (Install manually before IDE)
+# ============================================================
+
+[REQUIRED - PRE-INSTALL]
+
+1. Node.js v18+ LTS
+   Download: https://nodejs.org/
+   Version Used: 18.x or 20.x LTS
+   Verify: node -v
+
+2. Git
+   Download: https://git-scm.com/download/win
+   Verify: git --version
+
+3. Visual Studio Code (Optional but Recommended)
+   Download: https://code.visualstudio.com/
+
+4. GitHub Desktop (Optional)
+   Download: https://desktop.github.com/
+
+# ============================================================
+# SECTION 2: NPM DEPENDENCIES (Auto-installed via npm install)
+# ============================================================
+
+[PRODUCTION DEPENDENCIES - package.json]
+
+@electron-toolkit/preload: ^3.0.0
+@electron-toolkit/utils: ^3.0.0
+@nivo/bar: ^0.99.0
+@nivo/calendar: ^0.99.0
+@nivo/core: ^0.99.0
+@nivo/line: ^0.99.0
+@nivo/pie: ^0.99.0
+@nivo/radar: ^0.99.0
+@nivo/sankey: ^0.99.0
+@nivo/scatterplot: ^0.99.0
+@nivo/stream: ^0.99.0
+@nivo/treemap: ^0.99.0
+clsx: ^2.1.0
+electron-updater: ^6.1.7
+firebase: ^12.6.0
+framer-motion: ^11.0.8
+html-to-image: ^1.11.13
+jspdf: ^3.0.4
+jspdf-autotable: ^5.0.2
+lightweight-charts: ^5.0.9
+lucide-react: ^0.344.0
+react-router-dom: ^7.9.6
+recharts: ^3.4.1
+tailwind-merge: ^2.2.1
+xlsx: ^0.18.5
+yahoo-finance2: ^3.10.2
+
+[DEV DEPENDENCIES - package.json]
+
+@electron-toolkit/eslint-config: ^1.0.2
+@vitejs/plugin-react: ^4.2.1
+autoprefixer: ^10.4.18
+electron: ^29.0.0
+electron-builder: ^24.9.1
+electron-vite: ^2.0.0
+eslint: ^8.56.0
+eslint-plugin-react: ^7.33.2
+postcss: ^8.4.35
+prettier: ^3.2.4
+react: ^18.2.0
+react-dom: ^18.2.0
+tailwindcss: ^3.4.1
+vite: ^5.0.12
+
+# ============================================================
+# SECTION 3: VS CODE EXTENSIONS (Recommended)
+# ============================================================
+
+[VSCODE EXTENSIONS]
+
+1. ESLint - dbaeumer.vscode-eslint
+2. Prettier - esbenp.prettier-vscode
+3. Tailwind CSS IntelliSense - bradlc.vscode-tailwindcss
+4. ES7+ React Snippets - dsznajder.es7-react-js-snippets
+5. Auto Rename Tag - formulahendry.auto-rename-tag
+6. Git Lens - eamodio.gitlens
+7. Path Intellisense - christian-kohler.path-intellisense
+
+# ============================================================
+# SECTION 4: FIREBASE CONFIGURATION
+# ============================================================
+
+[FIREBASE - Already configured in project]
+
+Firebase SDK: 12.6.0
+Services Used:
+- Authentication (Email/Password)
+- Firestore Database
+- Hosting (for website)
+
+Configuration File: src/renderer/src/utils/firebase.js
+
+# ============================================================
+# SECTION 5: EXTERNAL APIs (No installation needed)
+# ============================================================
+
+[APIs USED]
+
+1. Yahoo Finance API (via yahoo-finance2)
+   - Stock prices
+   - Market data
+
+2. Exchange Rate API
+   - Currency conversion
+   - Live rates
+
+3. GitHub API
+   - Release downloads
+   - Version checking
+
+# ============================================================
+# SECTION 6: GITHUB ACTIONS (CI/CD)
+# ============================================================
+
+[GITHUB SECRETS REQUIRED]
+
+1. FIREBASE_SERVICE_ACCOUNT
+   - For website deployment
+   - Generate from Firebase Console > Project Settings > Service Accounts
+
+# ============================================================
+# SECTION 7: INSTALLATION COMMANDS
+# ============================================================
+
+[STEP-BY-STEP INSTALLATION]
+
+# 1. Clone repository (if from GitHub)
+git clone https://github.com/YOUR_USERNAME/PocketWall.git
+cd PocketWall
+
+# 2. Install all dependencies
+npm install
+
+# 3. Run development server
+npm run dev
+
+# 4. Build for production
+npm run build
+
+# 5. Create Windows installer
+npm run build:win
+
+# ============================================================
+# SECTION 8: ENVIRONMENT VARIABLES (if any)
+# ============================================================
+
+[ENVIRONMENT VARIABLES]
+
+Currently none required.
+All API keys are embedded in code or use public endpoints.
+
+# ============================================================
+# SECTION 9: TROUBLESHOOTING
+# ============================================================
+
+[COMMON ISSUES]
+
+1. "node-gyp" errors:
+   - Install Windows Build Tools
+   - npm install --global windows-build-tools
+
+2. Electron cache errors:
+   - Delete node_modules and package-lock.json
+   - npm cache clean --force
+   - npm install
+
+3. Port 5173 in use:
+   - Kill existing process or change port in vite config
+
+4. Firebase auth errors:
+   - Check firebase.js configuration
+   - Verify project settings in Firebase Console
+
+# ============================================================
+# END OF FILE
+# ============================================================

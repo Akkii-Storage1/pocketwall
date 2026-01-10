@@ -543,9 +543,9 @@ const MainLayout = () => {
     useEffect(() => {
         const root = document.documentElement;
         switch (appearance.fontSize) {
-            case 'small': root.style.fontSize = '14px'; break;
-            case 'large': root.style.fontSize = '18px'; break;
-            default: root.style.fontSize = '16px'; break;
+            case 'small': root.style.fontSize = '12px'; break;
+            case 'large': root.style.fontSize = '16px'; break;
+            default: root.style.fontSize = '14px'; break;
         }
     }, [appearance.fontSize]);
 

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Edit2, Trash2, Search, Filter, Download, Plus, X, Check, ChevronLeft, ChevronRight, Upload, Paperclip, Share2, Save, FileText } from 'lucide-react';
 import { motion, useDragControls } from 'framer-motion';
 import { useToast } from '../components/Toast';
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, CURRENCIES, DEFAULT_EXCHANGE_RATES } from '../constants';
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, TRANSFER_CATEGORIES, CURRENCIES, DEFAULT_EXCHANGE_RATES } from '../constants';
 import EmptyState from '../components/EmptyState';
 import AttachmentViewer from '../components/AttachmentViewer';
 import ShareButton from '../components/ShareButton';
@@ -31,7 +31,7 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
     const [filters, setFilters] = useState({
         startDate: '',
         endDate: '',
-        type: 'all', // all, income, expense
+        type: 'all', // all, income, expense, transfer
         minAmount: '',
         maxAmount: '',
         categories: []
@@ -98,6 +98,7 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
         category: 'Food',
         payee: '',
         accountId: '',
+        toAccountId: '', // For transfer transactions
         description: '',
         tags: '',
         date: new Date().toISOString().split('T')[0],
@@ -383,6 +384,7 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
             category: transaction.category,
             payee: transaction.payee || '',
             accountId: transaction.accountId,
+            toAccountId: transaction.toAccountId || '', // For transfer transactions
             description: transaction.description || '',
             tags: transaction.tags || '',
             date: transaction.date,
@@ -434,8 +436,20 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
                 }
             }
 
-            // Validation for Payee
-            if (!formData.payee || formData.payee.trim() === '' || formData.payee.toLowerCase() === 'unknown') {
+            // Validation for Transfer Transactions
+            if (formData.type === 'transfer') {
+                if (!formData.toAccountId) {
+                    toast.error('Please select a destination account for the transfer');
+                    return;
+                }
+                if (formData.toAccountId === formData.accountId) {
+                    toast.error('Cannot transfer to the same account');
+                    return;
+                }
+            }
+
+            // Validation for Payee (not required for transfers)
+            if (formData.type !== 'transfer' && (!formData.payee || formData.payee.trim() === '' || formData.payee.toLowerCase() === 'unknown')) {
                 toast.error('Please enter a valid Payee name');
                 return;
             }
@@ -1189,13 +1203,22 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
                                                 {accounts.find(a => a.id === t.accountId)?.name || 'Main'}
                                             </td>
                                             <td className="px-3 py-2" style={{ borderColor }}>
-                                                <span className={`px-2 py-0.5 rounded text-[10px] ${t.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                    {t.type.toUpperCase()}
+                                                <span className={`px-2 py-0.5 rounded text-[10px] ${
+                                                    t.type === 'income' ? 'bg-green-100 text-green-800' : 
+                                                    t.type === 'transfer' ? 'bg-blue-100 text-blue-800' : 
+                                                    'bg-red-100 text-red-800'
+                                                }`}>
+                                                    {t.type === 'transfer' ? '🔄 TRANSFER' : t.type.toUpperCase()}
                                                 </span>
                                             </td>
-                                            <td className="px-3 py-2 font-medium" style={{ borderColor, color: textColor }}>{t.payee}</td>
-                                            <td className="px-3 py-2 text-right font-bold" style={{ borderColor, color: t.type === 'income' ? '#059669' : '#ef4444' }}>
-                                                {t.type === 'income' ? '+' : '-'}{formatMoney(Math.abs(t.amount))}
+                                            <td className="px-3 py-2 font-medium" style={{ borderColor, color: textColor }}>
+                                                {t.type === 'transfer' 
+                                                    ? `${accounts.find(a => a.id === t.accountId)?.name || 'From'} → ${accounts.find(a => a.id === t.toAccountId)?.name || 'To'}`
+                                                    : t.payee
+                                                }
+                                            </td>
+                                            <td className="px-3 py-2 text-right font-bold" style={{ borderColor, color: t.type === 'income' ? '#059669' : t.type === 'transfer' ? '#3b82f6' : '#ef4444' }}>
+                                                {t.type === 'income' ? '+' : t.type === 'transfer' ? '↔' : '-'}{formatMoney(Math.abs(t.amount))}
                                             </td>
                                             <td className="px-3 py-2" style={{ borderColor, color: textColor }}>{t.category}</td>
                                             <td className="px-3 py-2 text-center" style={{ borderColor }}>
@@ -1372,25 +1395,35 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
                                 {/* Transaction Type */}
                                 <div>
                                     <label className="block text-sm font-semibold mb-2" style={{ color: textColor }}>Transaction Type</label>
-                                    <div className="flex gap-2">
-                                        <label className="flex items-center gap-2">
+                                    <div className="flex flex-wrap gap-2">
+                                        <label className="flex items-center gap-1 cursor-pointer">
                                             <input
                                                 type="radio"
                                                 checked={formData.type === 'expense'}
-                                                onChange={() => setFormData({ ...formData, type: 'expense', category: EXPENSE_CATEGORIES[0], isSplit: false, splits: [] })}
+                                                onChange={() => setFormData({ ...formData, type: 'expense', category: EXPENSE_CATEGORIES[0], isSplit: false, splits: [], toAccountId: '' })}
                                             />
-                                            <span className="text-sm" style={{ color: textColor }}>Expense</span>
+                                            <span className="text-xs px-2 py-1 rounded" style={{ color: textColor, backgroundColor: formData.type === 'expense' ? (isDark ? '#ef44441a' : '#fee2e2') : 'transparent' }}>💸 Expense</span>
                                         </label>
-                                        <label className="flex items-center gap-2">
+                                        <label className="flex items-center gap-1 cursor-pointer">
                                             <input
                                                 type="radio"
                                                 checked={formData.type === 'income'}
-                                                onChange={() => setFormData({ ...formData, type: 'income', category: INCOME_CATEGORIES[0], isSplit: false, splits: [] })}
+                                                onChange={() => setFormData({ ...formData, type: 'income', category: INCOME_CATEGORIES[0], isSplit: false, splits: [], toAccountId: '' })}
                                             />
-                                            <span className="text-sm" style={{ color: textColor }}>Income</span>
+                                            <span className="text-xs px-2 py-1 rounded" style={{ color: textColor, backgroundColor: formData.type === 'income' ? (isDark ? '#10b9811a' : '#d1fae5') : 'transparent' }}>💰 Income</span>
+                                        </label>
+                                        <label className="flex items-center gap-1 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                checked={formData.type === 'transfer'}
+                                                onChange={() => setFormData({ ...formData, type: 'transfer', category: TRANSFER_CATEGORIES[0], isSplit: false, splits: [], toAccountId: accounts.length > 1 ? accounts.find(a => a.id !== formData.accountId)?.id || '' : '' })}
+                                            />
+                                            <span className="text-xs px-2 py-1 rounded" style={{ color: textColor, backgroundColor: formData.type === 'transfer' ? (isDark ? '#3b82f61a' : '#dbeafe') : 'transparent' }}>🔄 Transfer</span>
                                         </label>
                                     </div>
                                 </div>
+
+
 
                                 {/* Amount & Currency */}
                                 <div className="flex gap-2">
@@ -1497,6 +1530,29 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
                                                                     }}
                                                                     className="px-2 py-1 cursor-pointer hover:bg-blue-600 hover:text-white rounded"
                                                                 >
+                                                                    {cat}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : formData.type === 'transfer' ? (
+                                                        <div className="p-2">
+                                                            <div className="text-xs font-bold mb-2 opacity-50 border-b pb-1">Transfer Type</div>
+                                                            {TRANSFER_CATEGORIES.map(cat => (
+                                                                <div
+                                                                    key={cat}
+                                                                    onClick={() => {
+                                                                        setFormData({ ...formData, category: cat });
+                                                                        setShowCategoryDropdown(false);
+                                                                    }}
+                                                                    className="px-2 py-1 cursor-pointer hover:bg-blue-600 hover:text-white rounded"
+                                                                >
+                                                                    {cat === 'ATM Withdrawal' && '🏧 '}
+                                                                    {cat === 'Credit Card Payment' && '💳 '}
+                                                                    {cat === 'Bank Transfer' && '🏦 '}
+                                                                    {cat === 'Cash Deposit' && '💵 '}
+                                                                    {cat === 'Investment Transfer' && '📈 '}
+                                                                    {cat === 'Wallet Top-up' && '👛 '}
+                                                                    {cat === 'Other Transfer' && '🔄 '}
                                                                     {cat}
                                                                 </div>
                                                             ))}
@@ -1645,61 +1701,81 @@ const Transactions = ({ isDark, isPrivacyMode, animationsEnabled, currency }) =>
                                 {/* Description & Payee */}
                                 <div className="flex gap-2">
                                     <div className="flex-1 relative">
-                                        <label className="block text-sm font-semibold mb-1" style={{ color: textColor }}>Payee</label>
-                                        <input
-                                            ref={inputRef}
-                                            type="text"
-                                            required
-                                            autoFocus
-                                            value={formData.payee}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setFormData({ ...formData, payee: val });
-                                                if (val.length > 0) {
-                                                    const matches = payees.filter(p => p.name.toLowerCase().includes(val.toLowerCase()));
-                                                    setPayeeSuggestions(matches);
-                                                    setShowPayeeSuggestions(true);
-                                                } else {
-                                                    setShowPayeeSuggestions(false);
-                                                }
-                                            }}
-                                            onFocus={() => {
-                                                if (formData.payee) {
-                                                    const matches = payees.filter(p => p.name.toLowerCase().includes(formData.payee.toLowerCase()));
-                                                    setPayeeSuggestions(matches);
-                                                    setShowPayeeSuggestions(true);
-                                                }
-                                            }}
-                                            onBlur={() => setTimeout(() => setShowPayeeSuggestions(false), 200)}
-                                            className="w-full px-2 py-1 text-sm border"
-                                            style={{
-                                                backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
-                                                color: textColor,
-                                                borderColor
-                                            }}
-                                            placeholder="e.g. Starbucks"
-                                        />
-                                        {showPayeeSuggestions && payeeSuggestions.length > 0 && (
-                                            <div className="absolute z-10 w-full border shadow-lg max-h-40 overflow-y-auto" style={{ backgroundColor: panelBg, borderColor }}>
-                                                {payeeSuggestions.map(p => (
-                                                    <div
-                                                        key={p.name}
-                                                        className="px-2 py-1 text-xs cursor-pointer hover:bg-blue-600 hover:!text-white rounded"
-                                                        style={{ color: textColor }}
-                                                        onClick={() => {
-                                                            setFormData({
-                                                                ...formData,
-                                                                payee: p.name,
-                                                                category: p.lastCategory || formData.category
-                                                            });
+                                        {formData.type === 'transfer' ? (
+                                            <>
+                                                <label className="block text-sm font-semibold mb-1" style={{ color: textColor }}>To Account</label>
+                                                <select
+                                                    value={formData.toAccountId}
+                                                    onChange={e => setFormData({ ...formData, toAccountId: e.target.value })}
+                                                    className="w-full px-2 py-1 text-sm border"
+                                                    style={{ backgroundColor: isDark ? '#1e1e1e' : '#ffffff', color: textColor, borderColor }}
+                                                    required
+                                                >
+                                                    <option value="">Select destination...</option>
+                                                    {accounts.filter(a => a.id !== formData.accountId).map(a => (
+                                                        <option key={a.id} value={a.id}>{a.name}</option>
+                                                    ))}
+                                                </select>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <label className="block text-sm font-semibold mb-1" style={{ color: textColor }}>Payee</label>
+                                                <input
+                                                    ref={inputRef}
+                                                    type="text"
+                                                    required
+                                                    autoFocus
+                                                    value={formData.payee}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setFormData({ ...formData, payee: val });
+                                                        if (val.length > 0) {
+                                                            const matches = payees.filter(p => p.name.toLowerCase().includes(val.toLowerCase()));
+                                                            setPayeeSuggestions(matches);
+                                                            setShowPayeeSuggestions(true);
+                                                        } else {
                                                             setShowPayeeSuggestions(false);
-                                                        }}
-                                                    >
-                                                        <div className="font-bold">{p.name}</div>
-                                                        <div className="opacity-70 text-[10px]">Used {p.count} times • {p.lastCategory}</div>
+                                                        }
+                                                    }}
+                                                    onFocus={() => {
+                                                        if (formData.payee) {
+                                                            const matches = payees.filter(p => p.name.toLowerCase().includes(formData.payee.toLowerCase()));
+                                                            setPayeeSuggestions(matches);
+                                                            setShowPayeeSuggestions(true);
+                                                        }
+                                                    }}
+                                                    onBlur={() => setTimeout(() => setShowPayeeSuggestions(false), 200)}
+                                                    className="w-full px-2 py-1 text-sm border"
+                                                    style={{
+                                                        backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+                                                        color: textColor,
+                                                        borderColor
+                                                    }}
+                                                    placeholder="e.g. Starbucks"
+                                                />
+                                                {showPayeeSuggestions && payeeSuggestions.length > 0 && (
+                                                    <div className="absolute z-10 w-full border shadow-lg max-h-40 overflow-y-auto" style={{ backgroundColor: panelBg, borderColor }}>
+                                                        {payeeSuggestions.map(p => (
+                                                            <div
+                                                                key={p.name}
+                                                                className="px-2 py-1 text-xs cursor-pointer hover:bg-blue-600 hover:!text-white rounded"
+                                                                style={{ color: textColor }}
+                                                                onClick={() => {
+                                                                    setFormData({
+                                                                        ...formData,
+                                                                        payee: p.name,
+                                                                        category: p.lastCategory || formData.category
+                                                                    });
+                                                                    setShowPayeeSuggestions(false);
+                                                                }}
+                                                            >
+                                                                <div className="font-bold">{p.name}</div>
+                                                                <div className="opacity-70 text-[10px]">Used {p.count} times • {p.lastCategory}</div>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                     <div className="flex-1">

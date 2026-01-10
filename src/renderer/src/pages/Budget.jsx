@@ -36,7 +36,14 @@ const Budget = ({ isDark, currency }) => {
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryAmount, setNewCategoryAmount] = useState('');
     const [newCategoryPeriod, setNewCategoryPeriod] = useState('monthly'); // Per-budget period
+    const [newCategoryStartDay, setNewCategoryStartDay] = useState(1); // Budget cycle start day (1-28)
     const [editPeriod, setEditPeriod] = useState('monthly'); // Period for editing
+    const [editStartDay, setEditStartDay] = useState(1); // Start day for editing
+
+    // Insights Modal State
+    const [showInsightsModal, setShowInsightsModal] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [categoryTransactions, setCategoryTransactions] = useState({}); // {category: [transactions]}
 
     useEffect(() => {
         loadData();
@@ -58,6 +65,8 @@ const Budget = ({ isDark, currency }) => {
             // Helper to calculate spending for a given month
             const calculateSpendingForMonth = (year, month) => {
                 const monthSpending = {};
+                const catTxns = {}; // Track transactions by category
+
                 transactions.forEach(t => {
                     const tDate = new Date(t.date);
                     if (t.type === 'expense' && tDate.getMonth() === (month - 1) && tDate.getFullYear() === year) {
@@ -69,21 +78,39 @@ const Budget = ({ isDark, currency }) => {
                                 const existing = [...EXPENSE_CATEGORIES, ...Object.keys(savedBudgets)].find(c => c.toLowerCase() === cat.toLowerCase());
                                 if (existing) cat = existing;
                                 monthSpending[cat] = (monthSpending[cat] || 0) + splitAmountINR;
+
+                                // Track transaction for insights
+                                if (!catTxns[cat]) catTxns[cat] = [];
+                                catTxns[cat].push({
+                                    ...t,
+                                    amount: splitAmountINR,
+                                    description: split.description || t.description,
+                                    category: cat
+                                });
                             });
                         } else {
                             let cat = t.category.trim();
                             const existing = [...EXPENSE_CATEGORIES, ...Object.keys(savedBudgets)].find(c => c.toLowerCase() === cat.toLowerCase());
                             if (existing) cat = existing;
                             monthSpending[cat] = (monthSpending[cat] || 0) + Math.abs(parseFloat(t.amount));
+
+                            // Track transaction for insights
+                            if (!catTxns[cat]) catTxns[cat] = [];
+                            catTxns[cat].push({
+                                ...t,
+                                amount: Math.abs(parseFloat(t.amount)),
+                                category: cat
+                            });
                         }
                     }
                 });
-                return monthSpending;
+                return { spending: monthSpending, transactions: catTxns };
             };
 
             // Current month spending
-            const currentSpending = calculateSpendingForMonth(selectedYear, selectedMonth);
+            const { spending: currentSpending, transactions: catTxns } = calculateSpendingForMonth(selectedYear, selectedMonth);
             setSpending(currentSpending);
+            setCategoryTransactions(catTxns);
 
             // Calculate monthly income for zero-based budgeting
             let income = 0;
@@ -104,7 +131,7 @@ const Budget = ({ isDark, currency }) => {
                     prevYear = selectedYear - 1;
                 }
 
-                const prevSpending = calculateSpendingForMonth(prevYear, prevMonth);
+                const { spending: prevSpending } = calculateSpendingForMonth(prevYear, prevMonth);
                 const rollovers = {};
 
                 // For each budget category, calculate unused amount from last month
@@ -152,6 +179,94 @@ const Budget = ({ isDark, currency }) => {
         if (typeof budget === 'object' && budget !== null) return budget.period || 'monthly';
         return 'monthly';
     };
+
+    // Helper to get budget start day (1-28, default 1 for month start)
+    const getBudgetStartDay = (budget) => {
+        if (typeof budget === 'number') return 1; // Old format
+        if (typeof budget === 'object' && budget !== null) return budget.startDay || 1;
+        return 1;
+    };
+
+    // Get detailed insights for a category
+    const getCategoryInsights = (category) => {
+        const txns = categoryTransactions[category] || [];
+        const budgetData = budgets[category];
+        const limit = getBudgetAmount(budgetData);
+        const spent = spending[category] || 0;
+        const percentage = limit > 0 ? (spent / limit) * 100 : 0;
+
+        // Calculate insights
+        const today = new Date();
+        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        const daysPassed = today.getDate();
+        const daysRemaining = daysInMonth - daysPassed;
+
+        // Daily average spending
+        const dailyAvg = txns.length > 0 ? spent / daysPassed : 0;
+        const projectedSpend = dailyAvg * daysInMonth;
+        const projectedPercentage = limit > 0 ? (projectedSpend / limit) * 100 : 0;
+
+        // Safe daily spend
+        const remaining = limit - spent;
+        const safeDailySpend = remaining > 0 && daysRemaining > 0 ? remaining / daysRemaining : 0;
+
+        // Top transactions
+        const topTxns = [...txns].sort((a, b) => b.amount - a.amount).slice(0, 5);
+
+        // Peak spending days (group by day)
+        const daySpending = {};
+        txns.forEach(t => {
+            const day = new Date(t.date).toLocaleDateString('en-US', { weekday: 'long' });
+            daySpending[day] = (daySpending[day] || 0) + t.amount;
+        });
+        const peakDays = Object.entries(daySpending)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+
+        // Transaction count
+        const txnCount = txns.length;
+        const avgTxnAmount = txnCount > 0 ? spent / txnCount : 0;
+
+        // Health status
+        let health = 'good';
+        let healthMessage = 'On track! 🎉';
+        if (percentage > 100) {
+            health = 'critical';
+            healthMessage = `Over budget by ${formatMoney(toDisplay(spent - limit))} 🚨`;
+        } else if (percentage > 80) {
+            health = 'warning';
+            healthMessage = `Approaching limit - ${formatMoney(toDisplay(remaining))} left ⚠️`;
+        } else if (projectedPercentage > 100) {
+            health = 'caution';
+            healthMessage = `At current pace, will exceed by ${formatMoney(toDisplay(projectedSpend - limit))} 📊`;
+        }
+
+        return {
+            txns,
+            txnCount,
+            limit,
+            spent,
+            percentage,
+            remaining,
+            dailyAvg,
+            projectedSpend,
+            projectedPercentage,
+            safeDailySpend,
+            daysRemaining,
+            topTxns,
+            peakDays,
+            avgTxnAmount,
+            health,
+            healthMessage
+        };
+    };
+
+    // Open insights modal
+    const openInsights = (category) => {
+        setSelectedCategory(category);
+        setShowInsightsModal(true);
+    };
+
     const handleAddCustomBudget = async () => {
         if (!newCategoryName.trim()) return;
         if (budgets[newCategoryName]) {
@@ -164,8 +279,14 @@ const Budget = ({ isDark, currency }) => {
         const valInINR = val / rate;
 
         const currentSaved = await DataAdapter.getBudgets();
-        // Save as {amount, period} structure
-        const newBudgets = { ...currentSaved, [newCategoryName]: { amount: valInINR, period: newCategoryPeriod } };
+        // Save as {amount, period, startDay} structure
+        const newBudgets = {
+            ...currentSaved, [newCategoryName]: {
+                amount: valInINR,
+                period: newCategoryPeriod,
+                startDay: parseInt(newCategoryStartDay) || 1
+            }
+        };
         setBudgets(newBudgets);
         await DataAdapter.saveBudgets(newBudgets);
         window.dispatchEvent(new CustomEvent('budgetUpdated'));
@@ -175,7 +296,19 @@ const Budget = ({ isDark, currency }) => {
         setNewCategoryName('');
         setNewCategoryAmount('');
         setNewCategoryPeriod('monthly'); // Reset
-        toast.success(`Budget added (${newCategoryPeriod})`);
+        setNewCategoryStartDay(1); // Reset
+        toast.success(`Budget added (${newCategoryPeriod}, starts ${newCategoryStartDay}${getOrdinalSuffix(newCategoryStartDay)})`);
+    };
+
+    // Helper for ordinal suffix (1st, 2nd, 3rd, etc.)
+    const getOrdinalSuffix = (day) => {
+        if (day > 3 && day < 21) return 'th';
+        switch (day % 10) {
+            case 1: return 'st';
+            case 2: return 'nd';
+            case 3: return 'rd';
+            default: return 'th';
+        }
     };
 
     const checkAchievements = async (previousBudgetCount, newBudgetCount) => {
@@ -201,13 +334,19 @@ const Budget = ({ isDark, currency }) => {
         const valInINR = val / rate;
 
         const currentSaved = await DataAdapter.getBudgets();
-        // Save as {amount, period} structure
-        const newBudgets = { ...currentSaved, [category]: { amount: valInINR, period: editPeriod } };
+        // Save as {amount, period, startDay} structure
+        const newBudgets = {
+            ...currentSaved, [category]: {
+                amount: valInINR,
+                period: editPeriod,
+                startDay: parseInt(editStartDay) || 1
+            }
+        };
         setBudgets(newBudgets);
         await DataAdapter.saveBudgets(newBudgets);
         window.dispatchEvent(new CustomEvent('budgetUpdated'));
         setEditingCategory(null);
-        toast.success(`Budget updated for ${category} (${editPeriod})`);
+        toast.success(`Budget updated for ${category} (${editPeriod}, starts ${editStartDay}${getOrdinalSuffix(editStartDay)})`);
 
         // Check achievements immediately
         const newBudgetCount = Object.keys(newBudgets).filter(k => getBudgetAmount(newBudgets[k]) > 0).length;
@@ -218,6 +357,7 @@ const Budget = ({ isDark, currency }) => {
         const currentBudgetCount = Object.values(budgets).filter(b => getBudgetAmount(b) > 0).length;
         const currentLimitINR = getBudgetAmount(budgetData);
         const currentPeriod = getBudgetPeriod(budgetData);
+        const currentStartDay = getBudgetStartDay(budgetData);
         const isNewBudget = !currentLimitINR || currentLimitINR === 0;
 
         if (isNewBudget && !checkLimit('maxBudgets', currentBudgetCount)) {
@@ -231,6 +371,7 @@ const Budget = ({ isDark, currency }) => {
         setEditingCategory(category);
         setEditAmount(currentLimitINR ? displayVal.toFixed(2) : '');
         setEditPeriod(currentPeriod); // Set current period for editing
+        setEditStartDay(currentStartDay); // Set current start day for editing
     };
 
     const ProgressBar = ({ current, max }) => {
@@ -327,7 +468,7 @@ const Budget = ({ isDark, currency }) => {
                             style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', color: textColor, borderColor }}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         <div>
                             <label className="block text-sm font-medium mb-1">Limit ({currency})</label>
                             <SmartInput
@@ -349,6 +490,19 @@ const Budget = ({ isDark, currency }) => {
                                 <option value="weekly">📅 Weekly</option>
                                 <option value="biweekly">📅 Bi-Weekly</option>
                                 <option value="monthly">📅 Monthly</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Starts On</label>
+                            <select
+                                value={newCategoryStartDay}
+                                onChange={(e) => setNewCategoryStartDay(parseInt(e.target.value))}
+                                className="w-full px-3 py-2 border rounded"
+                                style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', color: textColor, borderColor }}
+                            >
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                                    <option key={day} value={day}>{day}{getOrdinalSuffix(day)}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -378,7 +532,7 @@ const Budget = ({ isDark, currency }) => {
                 isDark={isDark}
             >
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         <div>
                             <label className="block text-sm font-medium mb-1">Limit ({currency})</label>
                             <SmartInput
@@ -400,6 +554,19 @@ const Budget = ({ isDark, currency }) => {
                                 <option value="weekly">📅 Weekly</option>
                                 <option value="biweekly">📅 Bi-Weekly</option>
                                 <option value="monthly">📅 Monthly</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Starts On</label>
+                            <select
+                                value={editStartDay}
+                                onChange={(e) => setEditStartDay(parseInt(e.target.value))}
+                                className="w-full px-3 py-2 border rounded"
+                                style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff', color: textColor, borderColor }}
+                            >
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                                    <option key={day} value={day}>{day}{getOrdinalSuffix(day)}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -440,6 +607,155 @@ const Budget = ({ isDark, currency }) => {
                         </div>
                     </div>
                 </div>
+            </Modal>
+
+            {/* Budget Insights Modal */}
+            <Modal
+                isOpen={showInsightsModal && selectedCategory}
+                onClose={() => { setShowInsightsModal(false); setSelectedCategory(null); }}
+                title={`📊 ${selectedCategory} Insights`}
+                isDark={isDark}
+            >
+                {selectedCategory && (() => {
+                    const insights = getCategoryInsights(selectedCategory);
+                    return (
+                        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                            {/* Health Status Banner */}
+                            <div
+                                className="p-3 rounded-lg text-center font-medium"
+                                style={{
+                                    backgroundColor: insights.health === 'critical'
+                                        ? (isDark ? 'rgba(127, 29, 29, 0.4)' : '#fee2e2')
+                                        : insights.health === 'warning'
+                                            ? (isDark ? 'rgba(124, 45, 18, 0.4)' : '#ffedd5')
+                                            : insights.health === 'caution'
+                                                ? (isDark ? 'rgba(113, 63, 18, 0.4)' : '#fef3c7')
+                                                : (isDark ? 'rgba(20, 83, 45, 0.4)' : '#dcfce7'),
+                                    color: insights.health === 'critical'
+                                        ? (isDark ? '#fca5a5' : '#991b1b')
+                                        : insights.health === 'warning'
+                                            ? (isDark ? '#fdba74' : '#9a3412')
+                                            : insights.health === 'caution'
+                                                ? (isDark ? '#fcd34d' : '#92400e')
+                                                : (isDark ? '#86efac' : '#166534')
+                                }}
+                            >
+                                {insights.healthMessage}
+                            </div>
+
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 rounded-lg border" style={{ backgroundColor: panelBg, borderColor }}>
+                                    <div className="text-xs mb-1" style={{ color: isDark ? '#9ca3af' : '#374151' }}>💰 Spent</div>
+                                    <div className="text-lg font-bold" style={{ color: isDark ? '#f87171' : '#dc2626' }}>
+                                        {formatMoney(toDisplay(insights.spent))}
+                                    </div>
+                                    <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#374151' }}>of {formatMoney(toDisplay(insights.limit))} budget</div>
+                                </div>
+                                <div className="p-3 rounded-lg border" style={{ backgroundColor: panelBg, borderColor }}>
+                                    <div className="text-xs mb-1" style={{ color: isDark ? '#9ca3af' : '#374151' }}>📊 Daily Avg</div>
+                                    <div className="text-lg font-bold" style={{ color: isDark ? '#fbbf24' : '#d97706' }}>
+                                        {formatMoney(toDisplay(insights.dailyAvg))}
+                                    </div>
+                                    <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#374151' }}>per day</div>
+                                </div>
+                                <div className="p-3 rounded-lg border" style={{ backgroundColor: panelBg, borderColor }}>
+                                    <div className="text-xs mb-1" style={{ color: isDark ? '#9ca3af' : '#374151' }}>🎯 Safe Daily Limit</div>
+                                    <div className="text-lg font-bold" style={{ color: insights.safeDailySpend > 0 ? (isDark ? '#4ade80' : '#16a34a') : (isDark ? '#f87171' : '#dc2626') }}>
+                                        {formatMoney(toDisplay(Math.max(0, insights.safeDailySpend)))}
+                                    </div>
+                                    <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#374151' }}>{insights.daysRemaining} days left</div>
+                                </div>
+                                <div className="p-3 rounded-lg border" style={{ backgroundColor: panelBg, borderColor }}>
+                                    <div className="text-xs mb-1" style={{ color: isDark ? '#9ca3af' : '#374151' }}>📈 Projected Spend</div>
+                                    <div className="text-lg font-bold" style={{ color: insights.projectedPercentage > 100 ? (isDark ? '#f87171' : '#dc2626') : (isDark ? '#4ade80' : '#16a34a') }}>
+                                        {formatMoney(toDisplay(insights.projectedSpend))}
+                                    </div>
+                                    <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#374151' }}>{insights.projectedPercentage.toFixed(0)}% of budget</div>
+                                </div>
+                            </div>
+
+                            {/* Transaction Stats */}
+                            <div className="p-3 rounded-lg border" style={{ backgroundColor: panelBg, borderColor }}>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium" style={{ color: textColor }}>📝 Transactions</span>
+                                    <span className="text-lg font-bold" style={{ color: textColor }}>{insights.txnCount}</span>
+                                </div>
+                                <div className="text-xs mt-1" style={{ color: isDark ? '#9ca3af' : '#374151' }}>
+                                    Avg {formatMoney(toDisplay(insights.avgTxnAmount))} per transaction
+                                </div>
+                            </div>
+
+                            {/* Peak Spending Days */}
+                            {insights.peakDays.length > 0 && (
+                                <div className="p-3 rounded-lg border" style={{ backgroundColor: panelBg, borderColor }}>
+                                    <div className="text-sm font-medium mb-2" style={{ color: textColor }}>🔥 Peak Spending Days</div>
+                                    <div className="space-y-2">
+                                        {insights.peakDays.map(([day, amount], i) => (
+                                            <div key={day} className="flex justify-between items-center text-sm">
+                                                <span style={{ color: textColor }}>
+                                                    {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} {day}
+                                                </span>
+                                                <span className="font-semibold" style={{ color: textColor }}>
+                                                    {formatMoney(toDisplay(amount))}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Top Transactions */}
+                            {insights.topTxns.length > 0 && (
+                                <div className="p-3 rounded-lg border" style={{ backgroundColor: panelBg, borderColor }}>
+                                    <div className="text-sm font-medium mb-2" style={{ color: textColor }}>💸 Top Expenses</div>
+                                    <div className="space-y-2">
+                                        {insights.topTxns.map((t, i) => (
+                                            <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-dashed last:border-0" style={{ borderColor }}>
+                                                <div>
+                                                    <span style={{ color: textColor }}>{t.description || 'Expense'}</span>
+                                                    <div className="text-xs opacity-50">{new Date(t.date).toLocaleDateString()}</div>
+                                                </div>
+                                                <span className="font-semibold" style={{ color: isDark ? '#f87171' : '#dc2626' }}>
+                                                    -{formatMoney(toDisplay(t.amount))}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Tips based on health */}
+                            <div
+                                className="p-3 rounded-lg border"
+                                style={{
+                                    backgroundColor: isDark ? 'rgba(30, 58, 138, 0.3)' : '#dbeafe',
+                                    borderColor: isDark ? '#1e40af' : '#93c5fd'
+                                }}
+                            >
+                                <div
+                                    className="text-sm font-medium mb-1"
+                                    style={{ color: isDark ? '#93c5fd' : '#1e40af' }}
+                                >
+                                    💡 Suggestion
+                                </div>
+                                <p
+                                    className="text-xs"
+                                    style={{ color: isDark ? '#bfdbfe' : '#1e3a8a' }}
+                                >
+                                    {insights.health === 'critical'
+                                        ? `You're over budget! Consider reducing spending or adjusting your ${selectedCategory} budget for next month.`
+                                        : insights.health === 'warning'
+                                            ? `Only ${formatMoney(toDisplay(insights.remaining))} left. Try to limit spending to ${formatMoney(toDisplay(insights.safeDailySpend))}/day.`
+                                            : insights.health === 'caution'
+                                                ? `At current pace, you'll exceed by month end. Reduce daily spending to ${formatMoney(toDisplay(insights.safeDailySpend))}.`
+                                                : `Great job! You're managing this budget well. Keep it up! 👍`
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    );
+                })()}
             </Modal>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
@@ -611,8 +927,10 @@ const Budget = ({ isDark, currency }) => {
                             return (
                                 <div
                                     key={cat}
-                                    className="p-4 rounded-xl border shadow-sm hover:shadow-md transition-shadow group"
+                                    onClick={() => openInsights(cat)}
+                                    className="p-4 rounded-xl border shadow-sm hover:shadow-lg transition-all group cursor-pointer hover:scale-[1.01]"
                                     style={{ backgroundColor: panelBg, borderColor }}
+                                    title="Click for insights"
                                 >
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
@@ -632,7 +950,7 @@ const Budget = ({ isDark, currency }) => {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => startEdit(cat, budgetData)}
+                                            onClick={(e) => { e.stopPropagation(); startEdit(cat, budgetData); }}
                                             className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
                                             title="Edit Budget"
                                         >

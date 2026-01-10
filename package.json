@@ -1,6 +1,6 @@
 {
   "name": "pocketwall",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Personal Finance Desktop App",
   "main": "./out/main/index.js",
   "author": "Ankit Dixit",
